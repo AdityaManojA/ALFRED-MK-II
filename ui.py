@@ -80,7 +80,7 @@ _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 # ── Retro-Futuristic Cyber CRT Palette (Dossier / Vector / Batman Beyond) ─────────
 CRT_THEMES: dict[str, dict] = {
     "dossier": {
-        "name": "DOSSIER CRT [A-34]",
+        "name": "DEFAULT BATCAVE",
         "hex": "#8e9bff",
         "colors": {
             "BG": "#090a12",
@@ -110,7 +110,7 @@ CRT_THEMES: dict[str, dict] = {
         },
     },
     "vector": {
-        "name": "VECTOR CRT [WAKU]",
+        "name": "BANE MODE",
         "hex": "#a8ff3e",
         "colors": {
             "BG": "#060d07",
@@ -3012,9 +3012,9 @@ class CustomizeOverlay(QWidget):
         lay.addWidget(_lbl("TACTICAL CRT THEME PRESETS", 8, bold=True, color=C.TEXT_DIM))
         persona_row = QHBoxLayout(); persona_row.setSpacing(8)
         presets = [
-            ("💜 DOSSIER CRT [A-34]", "Alfred", "Master Wayne", "#8e9bff", "Fenrir"),
-            ("💚 VECTOR CRT [WAKU]",  "Alfred", "Master Wayne", "#a8ff3e", "Puck"),
-            ("🔴 BATMAN BEYOND",      "Alfred", "Terry",        "#ff0037", "Fenrir"),
+            ("💜 DEFAULT BATCAVE", "Alfred", "Master Wayne", "#8e9bff", "Fenrir"),
+            ("💚 BANE MODE",       "Alfred", "Master Wayne", "#a8ff3e", "Puck"),
+            ("🔴 BATMAN BEYOND",   "Alfred", "Terry",        "#ff0037", "Fenrir"),
         ]
         for pill_label, p_name, p_user, p_color, p_voice in presets:
             pb = QPushButton(pill_label)
@@ -3082,9 +3082,9 @@ class CustomizeOverlay(QWidget):
         swatch_grid.setSpacing(8)
         swatch_grid.setContentsMargins(0, 0, 0, 0)
         swatches = [
-            ("💜 DOSSIER CRT [A-34]", "#8e9bff"),
-            ("💚 VECTOR CRT [WAKU]",  "#a8ff3e"),
-            ("🔴 BATMAN BEYOND",      "#ff0037"),
+            ("💜 DEFAULT BATCAVE", "#8e9bff"),
+            ("💚 BANE MODE",       "#a8ff3e"),
+            ("🔴 BATMAN BEYOND",   "#ff0037"),
         ]
         for idx, (s_lbl, s_hex) in enumerate(swatches):
             sb = QPushButton(s_lbl)
