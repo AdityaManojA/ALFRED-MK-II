@@ -1,4 +1,4 @@
-# 🦇 ALFRED — MARK LIV (Wayne Protocol Edition)
+# 🦇 ALFRED — MARK II (Wayne Protocol Edition)
 ### Autonomous Multimodal AI Desktop Assistant & Tactical Terminal
 **Architect & Lead Creator:** **ADITYA MANOJ**
 
@@ -8,7 +8,7 @@
 [![AES-256 Remote](https://img.shields.io/badge/Mobile-Quantum%20Dashboard%20(iOS%2FAndroid)-00f0ff.svg)](https://github.com/)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
-> **ALFRED MARK-LIV** is an autonomous, real-time voice, vision, and system-control executive assistant built for complete digital sovereignty. Powered by native bidirectional audio streaming on the Google Gemini Live API, ALFRED sees your monitors, hears your voice with sub-second response times, executes complex OS workflows, and syncs seamlessly with your mobile devices.
+> **ALFRED MARK-II** is an autonomous, real-time voice, vision, and system-control executive assistant built for complete digital sovereignty. Powered by native bidirectional audio streaming on the Google Gemini Live API, ALFRED sees your monitors, hears your voice with sub-second response times, executes complex OS workflows, and syncs seamlessly with your mobile devices.
 
 ---
 
@@ -135,7 +135,7 @@ Mark-LIV/
 ```powershell
 # Clone the repository
 git clone https://github.com/AdityaManojA/ALFRED-MK-II.git
-cd Mark-LIV
+cd ALFRED-MK-II
 
 # Run the OS-tailored setup script
 python setup.py
@@ -203,7 +203,7 @@ This codebase is indexed with a full **GraphRAG Knowledge Graph** located in `gr
 ## 👤 Author & Credits
 
 * **Lead Architect & Creator:** **ADITYA MANOJ**
-* **Project:** Mark-LIV (Wayne Protocol Edition)
+* **Project:** ALFRED-MK-II (Wayne Protocol Edition)
 * **License:** [Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/)
 
 ---

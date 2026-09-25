@@ -66,8 +66,8 @@ def _read_full_config() -> dict:
 
 # Single source of truth for the release name — the window title, the header
 # badge and the readme must never disagree again.
-APP_VERSION  = "MARK LIV"
-APP_PROTOCOL = APP_VERSION.split()[-1]
+APP_VERSION  = "MARK II"
+APP_PROTOCOL = "MK-II"
 
 _DEFAULT_W, _DEFAULT_H = 1060, 720
 _MIN_W,     _MIN_H     = 880, 600
@@ -874,13 +874,13 @@ class HudCanvas(QWidget):
             p.setFont(f_tele)
             p.setPen(QPen(blend(main, 0.40), 1))
             p.drawText(QRectF(cx - W / 2 + m + 6, cy - H / 2 + m, 120, 14),
-                       Qt.AlignmentFlag.AlignLeft, "MK-LIV // ARC-GEN")
+                       Qt.AlignmentFlag.AlignLeft, "MK-II // ARC-GEN")
             p.drawText(QRectF(cx + W / 2 - m - 126, cy - H / 2 + m, 120, 14),
                        Qt.AlignmentFlag.AlignRight, "FREQ 142.8MHz")
             p.drawText(QRectF(cx - W / 2 + m + 6, cy + H / 2 - m - 14, 120, 14),
                        Qt.AlignmentFlag.AlignLeft, "FLUX: 99.8%")
             p.drawText(QRectF(cx + W / 2 - m - 126, cy + H / 2 - m - 14, 120, 14),
-                       Qt.AlignmentFlag.AlignRight, "STARK INDUSTRIES")
+                       Qt.AlignmentFlag.AlignRight, "WAYNE ENTERPRISES")
 
         # 3. Holographic Reticle Crosshairs with Precision Target Gaps
         p.setPen(QPen(blend(main, 0.16), 1))
@@ -1438,7 +1438,7 @@ class HudCanvas(QWidget):
         p.drawText(QRectF(m + 4, m + 2, 180, 12), Qt.AlignmentFlag.AlignLeft, "SUBJECT ALFRED.MK-II // VECTOR HUD")
         p.drawText(QRectF(W - m - 184, m + 2, 180, 12), Qt.AlignmentFlag.AlignRight, "ORBITAL MATRIX: 4 ACTIVE")
         p.drawText(QRectF(m + 4, H - m - 14, 180, 12), Qt.AlignmentFlag.AlignLeft, "COORDS: 42°19'N 71°05'W")
-        p.drawText(QRectF(W - m - 184, H - m - 14, 180, 12), Qt.AlignmentFlag.AlignRight, "WAYNE TECH PROTOCOL LIV")
+        p.drawText(QRectF(W - m - 184, H - m - 14, 180, 12), Qt.AlignmentFlag.AlignRight, "WAYNE TECH PROTOCOL MK-II")
 
         # Subtle CRT scanlines every 3px
         scan_col = QColor(main.red(), main.green(), main.blue(), 12)
