@@ -98,6 +98,7 @@ CRT_THEMES: dict[str, dict] = {
             "GREEN": "#4ef2bb",
             "GREEN_D": "#228562",
             "RED": "#ff2a55",
+            "MUTED": "#707ab0",
             "MUTED_C": "#ff3366",
             "TEXT": "#e8ecff",
             "TEXT_DIM": "#707ab0",
@@ -127,6 +128,7 @@ CRT_THEMES: dict[str, dict] = {
             "GREEN": "#a8ff3e",
             "GREEN_D": "#509920",
             "RED": "#ff3838",
+            "MUTED": "#588554",
             "MUTED_C": "#ff4466",
             "TEXT": "#dcfc9f",
             "TEXT_DIM": "#588554",
@@ -159,6 +161,7 @@ class C:
     GREEN       = "#4ef2bb"       # Phosphor matrix emerald
     GREEN_D     = "#228562"       # Muted green bio-metric
     RED         = "#ff2a55"       # Threat assessment crimson
+    MUTED       = "#707ab0"       # Muted terminal readout
     MUTED_C     = "#ff3366"       # Silence protocol neon
     TEXT        = "#e8ecff"       # Crisp luminescent CRT white-blue
     TEXT_DIM    = "#707ab0"       # Muted terminal readout
@@ -5417,10 +5420,10 @@ class MainWindow(QMainWindow):
         meta_row.setContentsMargins(4, 2, 4, 2)
         self._uptime_lbl = QLabel("UP  --:--")
         self._uptime_lbl.setFont(mono_font(7, QFont.Weight.Normal, letter_spacing=0.8))
-        self._uptime_lbl.setStyleSheet(f"color: {C.MUTED}; background: transparent; border: none;")
+        self._uptime_lbl.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent; border: none;")
         self._proc_lbl = QLabel("PROC  --")
         self._proc_lbl.setFont(mono_font(7, QFont.Weight.Normal, letter_spacing=0.8))
-        self._proc_lbl.setStyleSheet(f"color: {C.MUTED}; background: transparent; border: none;")
+        self._proc_lbl.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent; border: none;")
         meta_row.addWidget(self._uptime_lbl)
         meta_row.addStretch()
         meta_row.addWidget(self._proc_lbl)
