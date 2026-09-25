@@ -77,7 +77,7 @@ _RIGHT_W = 345
 _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
 
-# ── Retro-Futuristic Cyber CRT Palette (Screenshot 1: Dossier / Screenshot 2: Vector) ──
+# ── Retro-Futuristic Cyber CRT Palette (Dossier / Vector / Batman Beyond) ─────────
 CRT_THEMES: dict[str, dict] = {
     "dossier": {
         "name": "DOSSIER CRT [A-34]",
@@ -137,6 +137,36 @@ CRT_THEMES: dict[str, dict] = {
             "WHITE": "#f6ffea",
             "DARK": "#030804",
             "BAR_BG": "#0c1d0f",
+        },
+    },
+    "beyond": {
+        "name": "BATMAN BEYOND [NEO-GOTHAM]",
+        "hex": "#ff0037",
+        "colors": {
+            "BG": "#070103",
+            "PANEL": "#0d0205",
+            "PANEL2": "#18040a",
+            "PANEL_BG": "rgba(13, 2, 5, 0.96)",
+            "BORDER": "#3b0813",
+            "BORDER_B": "#ff0037",
+            "BORDER_A": "#660d1f",
+            "PRI": "#ff0037",
+            "PRI_DIM": "#b80028",
+            "PRI_GHO": "#33000b",
+            "ACC": "#00d4ff",
+            "ACC2": "#38bdf8",
+            "GREEN": "#00d4ff",
+            "GREEN_D": "#0284c7",
+            "RED": "#ff0037",
+            "MUTED": "#8a2538",
+            "MUTED_C": "#ff0037",
+            "TEXT": "#ffebef",
+            "TEXT_DIM": "#8a2538",
+            "TEXT_MED": "#ff758f",
+            "TEXT_BRIGHT": "#ffffff",
+            "WHITE": "#fff0f3",
+            "DARK": "#040002",
+            "BAR_BG": "#140308",
         },
     },
 }
@@ -209,7 +239,7 @@ def mono_font(size: int, weight: QFont.Weight = QFont.Weight.Normal, letter_spac
 _HUE_LINKED = (
     "BG", "PANEL", "PANEL2", "BORDER", "BORDER_B", "BORDER_A",
     "PRI", "PRI_DIM", "PRI_GHO", "TEXT", "TEXT_DIM", "TEXT_MED", "TEXT_BRIGHT",
-    "WHITE", "DARK", "BAR_BG", "ACC", "ACC2", "GREEN", "GREEN_D", "RED", "MUTED_C",
+    "WHITE", "DARK", "BAR_BG", "ACC", "ACC2", "GREEN", "GREEN_D", "RED", "MUTED_C", "MUTED",
 )
 _PALETTE_DEFAULTS: dict[str, str] = {k: getattr(C, k) for k in _HUE_LINKED}
 
@@ -218,7 +248,8 @@ DEFAULT_UI_COLOR = "#8e9bff"
 
 def apply_ui_accent(accent_hex: str) -> bool:
     """
-    Applies either DOSSIER CRT [A-34] (#8e9bff) or VECTOR CRT [WAKU] (#a8ff3e),
+    Applies DOSSIER CRT [A-34] (#8e9bff), VECTOR CRT [WAKU] (#a8ff3e),
+    or BATMAN BEYOND [NEO-GOTHAM] (#ff0037),
     or maps custom hex codes smoothly while preserving authentic CRT characteristics.
     """
     global _ACTIVE_THEME_ID
@@ -245,6 +276,12 @@ def apply_ui_accent(accent_hex: str) -> bool:
             if hasattr(C, k):
                 setattr(C, k, v)
         return True
+    elif accent_hex in ("#ff0037", "#ff1744", "#ff0d3e", "#e50914", "#ff1a40", "#ff0000"):
+        _ACTIVE_THEME_ID = "beyond"
+        for k, v in CRT_THEMES["beyond"]["colors"].items():
+            if hasattr(C, k):
+                setattr(C, k, v)
+        return True
 
     # Fallback hue shift
     def _hsv(h: str) -> tuple[float, float, float]:
@@ -258,8 +295,14 @@ def apply_ui_accent(accent_hex: str) -> bool:
     dh   = acc_h - base_h
     grey = acc_s < 0.08
 
-    # Determine base template (vector if green-ish, else dossier)
-    tmpl = CRT_THEMES["vector"]["colors"] if 0.20 <= acc_h <= 0.45 else CRT_THEMES["dossier"]["colors"]
+    # Determine base template (beyond if red, vector if green-ish, else dossier)
+    if _ACTIVE_THEME_ID == "beyond" or (0.94 <= acc_h or acc_h <= 0.05):
+        tmpl = CRT_THEMES["beyond"]["colors"]
+    elif 0.20 <= acc_h <= 0.45:
+        tmpl = CRT_THEMES["vector"]["colors"]
+    else:
+        tmpl = CRT_THEMES["dossier"]["colors"]
+
     for key in _HUE_LINKED:
         hex0 = tmpl.get(key, getattr(C, key))
         h, s, v = _hsv(hex0)
@@ -2961,9 +3004,9 @@ class CustomizeOverlay(QWidget):
             w.setStyleSheet(f"color: {color}; background: transparent;")
             return w
 
-        _fs = (f"QLineEdit {{ background: rgba(255, 255, 255, 0.05); color: {C.WHITE}; "
-               f"border: 1px solid rgba(0, 240, 255, 0.20); border-radius: 9px; padding: 6px 12px; font-size: 13px; }}"
-               f"QLineEdit:focus {{ border: 1px solid {C.PRI}; background: rgba(0, 240, 255, 0.08); }}")
+        _fs = (f"QLineEdit {{ background: {C.PANEL2}; color: {C.WHITE}; "
+               f"border: 1px solid {C.BORDER_A}; border-radius: 2px; padding: 6px 12px; font-size: 13px; }}"
+               f"QLineEdit:focus {{ border: 1px solid {C.PRI}; background: rgba(142, 155, 255, 0.08); }}")
 
         # ── Persona Presets Row ──────────────────────────────────────────
         lay.addWidget(_lbl("TACTICAL CRT THEME PRESETS", 8, bold=True, color=C.TEXT_DIM))
@@ -2971,18 +3014,19 @@ class CustomizeOverlay(QWidget):
         presets = [
             ("💜 DOSSIER CRT [A-34]", "Alfred", "Master Wayne", "#8e9bff", "Fenrir"),
             ("💚 VECTOR CRT [WAKU]",  "Alfred", "Master Wayne", "#a8ff3e", "Puck"),
+            ("🔴 BATMAN BEYOND",      "Alfred", "Terry",        "#ff0037", "Fenrir"),
         ]
         for pill_label, p_name, p_user, p_color, p_voice in presets:
             pb = QPushButton(pill_label)
             pb.setFixedHeight(30)
-            pb.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=0.6))
+            pb.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.5))
             pb.setCursor(Qt.CursorShape.PointingHandCursor)
             pb.setStyleSheet(f"""
                 QPushButton {{
-                    background: rgba(255, 255, 255, 0.05);
+                    background: {C.PANEL2};
                     color: {C.TEXT_BRIGHT};
-                    border: 1px solid rgba(255, 255, 255, 0.20);
-                    border-radius: 7px;
+                    border: 1px solid {C.BORDER_A};
+                    border-radius: 2px;
                     padding: 0 10px;
                 }}
                 QPushButton:hover {{
@@ -2998,7 +3042,7 @@ class CustomizeOverlay(QWidget):
         # ── Codename & Designation ───────────────────────────────────────
         lay.addWidget(_lbl("ASSISTANT CODENAME", 8, bold=True, color=C.TEXT_DIM))
         self._name_input = QLineEdit(assistant_name)
-        self._name_input.setFont(tech_font(10, QFont.Weight.DemiBold, letter_spacing=0.5))
+        self._name_input.setFont(mono_font(10, QFont.Weight.DemiBold, letter_spacing=0.5))
         self._name_input.setFixedHeight(34)
         self._name_input.setStyleSheet(_fs)
         lay.addWidget(self._name_input)
@@ -3007,7 +3051,7 @@ class CustomizeOverlay(QWidget):
                             bold=True, color=C.TEXT_DIM))
         self._user_input = QLineEdit(user_name)
         self._user_input.setPlaceholderText("e.g.  Master Wayne   (leave blank for default)")
-        self._user_input.setFont(tech_font(10, letter_spacing=0.3))
+        self._user_input.setFont(mono_font(10, letter_spacing=0.3))
         self._user_input.setFixedHeight(34)
         self._user_input.setStyleSheet(_fs)
         lay.addWidget(self._user_input)
@@ -3024,7 +3068,7 @@ class CustomizeOverlay(QWidget):
             b = QPushButton(_v)
             b.setCheckable(True)
             b.setFixedHeight(29)
-            b.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=0.4))
+            b.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.4))
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.clicked.connect(lambda _=False, name=_v: self._on_voice_pick(name))
             self._voice_btns[_v] = b
@@ -3033,25 +3077,26 @@ class CustomizeOverlay(QWidget):
         self._refresh_voice_btns()
 
         # ── Quick Chromatic Preset Chips ─────────────────────────────────
-        lay.addWidget(_lbl("AUTHENTIC CRT THEMES // SCREENSHOT 1 & 2", 8, bold=True, color=C.TEXT_DIM))
+        lay.addWidget(_lbl("AUTHENTIC CRT THEMES // CHROMATICS", 8, bold=True, color=C.TEXT_DIM))
         swatch_grid = QGridLayout()
         swatch_grid.setSpacing(8)
         swatch_grid.setContentsMargins(0, 0, 0, 0)
         swatches = [
             ("💜 DOSSIER CRT [A-34]", "#8e9bff"),
             ("💚 VECTOR CRT [WAKU]",  "#a8ff3e"),
+            ("🔴 BATMAN BEYOND",      "#ff0037"),
         ]
         for idx, (s_lbl, s_hex) in enumerate(swatches):
             sb = QPushButton(s_lbl)
             sb.setFixedHeight(32)
-            sb.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=0.6))
+            sb.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.5))
             sb.setCursor(Qt.CursorShape.PointingHandCursor)
             sb.setStyleSheet(f"""
                 QPushButton {{
-                    background: rgba(255, 255, 255, 0.05);
+                    background: {C.PANEL2};
                     color: {s_hex};
                     border: 1px solid {s_hex}88;
-                    border-radius: 7px;
+                    border-radius: 2px;
                     padding: 0 10px;
                 }}
                 QPushButton:hover {{
@@ -3076,7 +3121,7 @@ class CustomizeOverlay(QWidget):
         self._wheel.hue_committed.connect(self._on_wheel_commit)
 
         self._hex_input = QLineEdit(self._sel_color)
-        self._hex_input.setPlaceholderText("#00f0ff   (custom hex colour)")
+        self._hex_input.setPlaceholderText("#ff0037   (custom hex colour)")
         self._hex_input.setFont(mono_font(10))
         self._hex_input.setFixedHeight(30)
         self._hex_input.setStyleSheet(_fs)
@@ -3088,42 +3133,46 @@ class CustomizeOverlay(QWidget):
 
         # Fixed Bottom Action Bar (ALWAYS visible!)
         sep_bottom = QFrame(); sep_bottom.setFrameShape(QFrame.Shape.HLine)
-        sep_bottom.setStyleSheet("color: rgba(0, 240, 255, 0.16); margin: 2px 0;")
+        sep_bottom.setStyleSheet(f"color: {C.BORDER_A}; margin: 2px 0;")
         outer_lay.addWidget(sep_bottom)
 
         btn_row = QHBoxLayout(); btn_row.setSpacing(10)
         save_btn = QPushButton("▸  COMMIT DIRECTIVE")
-        save_btn.setFixedHeight(38)
-        save_btn.setFont(tech_font(9, QFont.Weight.Bold, letter_spacing=1.0))
+        save_btn.setFixedHeight(36)
+        save_btn.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=1.0))
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         save_btn.setStyleSheet(f"""
             QPushButton {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(0, 240, 255, 0.40), stop:1 rgba(0, 160, 230, 0.22));
-                color: #ffffff;
-                border: 1px solid {C.PRI}; border-radius: 9px;
+                background: {C.PRI};
+                color: {C.DARK};
+                border: 1px solid {C.PRI};
+                border-radius: 2px;
             }}
             QPushButton:hover {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(0, 240, 255, 0.65), stop:1 rgba(0, 200, 255, 0.40));
-                color: #ffffff; border-color: #ffffff;
+                background: {C.TEXT_BRIGHT};
+                color: #000000;
+                border-color: #ffffff;
             }}
             QPushButton:pressed {{
-                background: rgba(0, 240, 255, 0.30);
+                background: {C.PRI_DIM};
             }}
         """)
         save_btn.clicked.connect(self._save)
         btn_row.addWidget(save_btn, stretch=2)
 
         cancel_btn = QPushButton("DISCARD")
-        cancel_btn.setFixedHeight(38)
-        cancel_btn.setFont(tech_font(9, QFont.Weight.Medium, letter_spacing=0.5))
+        cancel_btn.setFixedHeight(36)
+        cancel_btn.setFont(mono_font(8, letter_spacing=0.8))
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
-                background: rgba(255, 255, 255, 0.04); color: {C.TEXT_MED};
-                border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 9px;
+                background: {C.PANEL2};
+                color: {C.TEXT_MED};
+                border: 1px solid {C.BORDER_A};
+                border-radius: 2px;
             }}
-            QPushButton:hover {{ color: #ffffff; border-color: rgba(0, 240, 255, 0.4); background: rgba(255, 255, 255, 0.08); }}
-            QPushButton:pressed {{ background: rgba(255, 255, 255, 0.03); }}
+            QPushButton:hover {{ color: #ffffff; border-color: {C.PRI}; background: rgba(142, 155, 255, 0.12); }}
+            QPushButton:pressed {{ background: rgba(142, 155, 255, 0.05); }}
         """)
         cancel_btn.clicked.connect(self._cancel)
         btn_row.addWidget(cancel_btn, stretch=1)
@@ -3148,14 +3197,14 @@ class CustomizeOverlay(QWidget):
             b.setChecked(on)
             if on:
                 b.setStyleSheet(f"""
-                    QPushButton {{ background: rgba(0, 240, 255, 0.22); color: #ffffff;
-                        border: 1px solid {C.PRI}; border-radius: 8px; }}
+                    QPushButton {{ background: {C.PRI}; color: {C.DARK};
+                        border: 1px solid {C.PRI}; border-radius: 2px; font-weight: bold; }}
                 """)
             else:
                 b.setStyleSheet(f"""
-                    QPushButton {{ background: rgba(255, 255, 255, 0.04); color: {C.TEXT_MED};
-                        border: 1px solid rgba(255, 255, 255, 0.10); border-radius: 8px; }}
-                    QPushButton:hover {{ color: #ffffff; border-color: rgba(0, 240, 255, 0.4); background: rgba(0, 240, 255, 0.08); }}
+                    QPushButton {{ background: {C.PANEL2}; color: {C.TEXT_MED};
+                        border: 1px solid {C.BORDER_A}; border-radius: 2px; }}
+                    QPushButton:hover {{ color: #ffffff; border-color: {C.PRI}; background: rgba(142, 155, 255, 0.10); }}
                 """)
 
     # ── colour flow ──────────────────────────────────────────────────────────
