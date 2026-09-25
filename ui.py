@@ -29,7 +29,7 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtWidgets import (
     QApplication, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit,
-    QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
+    QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSlider, QSplitter,
     QStackedWidget, QTextBrowser, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
 )
 
@@ -81,8 +81,10 @@ class TronScoreBackgroundPlayer(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._target_vol         = self.NORMAL_VOL
-        self._current_vol        = self.NORMAL_VOL
+        self._normal_vol         = self.NORMAL_VOL
+        self._ducked_vol         = self.DUCKED_VOL
+        self._target_vol         = self._normal_vol
+        self._current_vol        = self._normal_vol
         self._is_speaking_ducked = False
         self._is_paused          = False
 
@@ -125,6 +127,11 @@ class TronScoreBackgroundPlayer(QObject):
                     if p.exists() and p not in self._playlist:
                         self._playlist.append(p)
                 last_track_str = data.get("current_track")
+                if "base_volume" in data:
+                    self._normal_vol = float(data["base_volume"])
+                    self._ducked_vol = self._normal_vol * 0.5
+                    self._target_vol = self._normal_vol
+                    self._current_vol = self._normal_vol
             except Exception as e:
                 print(f"[Audio] Error loading music_playlist.json: {e}")
 
@@ -147,10 +154,29 @@ class TronScoreBackgroundPlayer(QObject):
             data = {
                 "current_track": str(self._current_path.resolve()) if self._current_path else "",
                 "tracks": [str(p.resolve()) for p in self._playlist if p.exists()],
+                "base_volume": self._normal_vol,
             }
             cfg_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
         except Exception as e:
             print(f"[Audio] Error saving music_playlist.json: {e}")
+
+    def base_volume(self) -> float:
+        return self._normal_vol
+
+    def set_base_volume(self, vol: float):
+        """Set base normal volume (0.0 to 1.0). Speech ducking scales to 50% of base."""
+        vol = max(0.0, min(1.0, vol))
+        self._normal_vol = vol
+        self._ducked_vol = vol * 0.5
+        if self._is_paused:
+            self._target_vol = 0.0
+        else:
+            self._target_vol = self._ducked_vol if self._is_speaking_ducked else self._normal_vol
+        if self._audio:
+            self._current_vol = self._target_vol
+            self._audio.setVolume(self._current_vol)
+        self.ducked_state_changed.emit(self._is_speaking_ducked, self._target_vol)
+        self._save_playlist_config()
 
     def load_track(self, path: Path | str, auto_play: bool = True) -> bool:
         path = Path(path)
@@ -177,7 +203,7 @@ class TronScoreBackgroundPlayer(QObject):
                 self._player.play()
                 self.playback_state_changed.emit(True)
 
-            print(f"[Audio] Loaded background track ({path.name}) at {int(self.NORMAL_VOL*100)}% volume.")
+            print(f"[Audio] Loaded background track ({path.name}) at {int(self._normal_vol*100)}% volume.")
             self.track_changed.emit(path.stem, str(path.resolve()))
             self._save_playlist_config()
             return True
@@ -195,12 +221,12 @@ class TronScoreBackgroundPlayer(QObject):
             self.load_track(p, auto_play=True)
 
     def set_ducked(self, ducked: bool):
-        """Duck to 5% when speaking, restore to 10% when idle/listening."""
+        """Duck to 50% of base volume when speaking, restore to base volume when idle/listening."""
         self._is_speaking_ducked = ducked
         if self._is_paused:
             self._target_vol = 0.0
         else:
-            self._target_vol = self.DUCKED_VOL if ducked else self.NORMAL_VOL
+            self._target_vol = self._ducked_vol if ducked else self._normal_vol
         self.ducked_state_changed.emit(ducked, self._target_vol)
         if self._fade_timer and not self._fade_timer.isActive():
             self._fade_timer.start()
@@ -2273,16 +2299,269 @@ class _EqualizerBarsWidget(QWidget):
             p.fillRect(QRectF(x, y, bar_w, h), QBrush(main_c))
 
 
+class _VolumeSliderPopup(QFrame):
+    """
+    Sleek tactical cyber popup for adjusting master background music volume.
+    Contains digital percentage readout, speech ducking indicator,
+    horizontal gain slider, and quick-preset gain pills.
+    """
+    def __init__(self, engine: TronScoreBackgroundPlayer, parent=None):
+        super().__init__(parent)
+        self._engine = engine
+        self.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setFixedSize(194, 150)
+
+        container = QWidget(self)
+        container.setGeometry(0, 0, 194, 150)
+        container.setStyleSheet(f"""
+            QWidget {{
+                background: {C.PANEL};
+                border: 1px solid {C.BORDER_B};
+                border-radius: 4px;
+            }}
+        """)
+
+        lay = QVBoxLayout(container)
+        lay.setContentsMargins(10, 8, 10, 8)
+        lay.setSpacing(6)
+
+        # Header Row
+        hdr_row = QHBoxLayout()
+        hdr_row.setContentsMargins(0, 0, 0, 0)
+        lbl = QLabel("◈ MASTER GAIN MATRIX")
+        lbl.setFont(mono_font(6.5, QFont.Weight.Bold, letter_spacing=0.8))
+        lbl.setStyleSheet(f"color: {C.PRI}; border: none; background: transparent;")
+        hdr_row.addWidget(lbl)
+        hdr_row.addStretch()
+
+        close_btn = QPushButton("✕")
+        close_btn.setFixedSize(16, 16)
+        close_btn.setFont(mono_font(7, QFont.Weight.Bold))
+        close_btn.setStyleSheet(f"""
+            QPushButton {{
+                color: {C.TEXT_DIM}; border: none; background: transparent;
+            }}
+            QPushButton:hover {{ color: #ff5577; }}
+        """)
+        close_btn.clicked.connect(self.close)
+        hdr_row.addWidget(close_btn)
+        lay.addLayout(hdr_row)
+
+        # Large Readout Row
+        self._val_lbl = QLabel(f"{int(self._engine.base_volume() * 100)}%")
+        self._val_lbl.setFont(mono_font(13, QFont.Weight.Bold))
+        self._val_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._val_lbl.setStyleSheet(f"color: {C.GREEN}; border: none; background: transparent;")
+        lay.addWidget(self._val_lbl)
+
+        # Ducking note
+        self._duck_lbl = QLabel(f"SPEECH DUCK LEVEL: {int(self._engine.base_volume() * 50)}%")
+        self._duck_lbl.setFont(mono_font(6, QFont.Weight.Normal))
+        self._duck_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._duck_lbl.setStyleSheet(f"color: {C.TEXT_DIM}; border: none; background: transparent;")
+        lay.addWidget(self._duck_lbl)
+
+        # QSlider
+        self._slider = QSlider(Qt.Orientation.Horizontal)
+        self._slider.setRange(0, 100)
+        self._slider.setValue(int(self._engine.base_volume() * 100))
+        self._slider.setStyleSheet(f"""
+            QSlider::groove:horizontal {{
+                height: 4px;
+                background: rgba(255, 255, 255, 0.12);
+                border-radius: 2px;
+            }}
+            QSlider::sub-page:horizontal {{
+                background: {C.GREEN};
+                border-radius: 2px;
+            }}
+            QSlider::handle:horizontal {{
+                background: #ffffff;
+                border: 1px solid {C.GREEN};
+                width: 12px;
+                height: 12px;
+                margin: -4px 0;
+                border-radius: 2px;
+            }}
+            QSlider::handle:horizontal:hover {{
+                background: {C.GREEN};
+            }}
+        """)
+        self._slider.valueChanged.connect(self._on_slider_moved)
+        lay.addWidget(self._slider)
+
+        # Presets Row [ 5% ] [ 10% ] [ 20% ] [ 50% ]
+        p_row = QHBoxLayout()
+        p_row.setContentsMargins(0, 0, 0, 0)
+        p_row.setSpacing(3)
+        for pct in (5, 10, 20, 50):
+            pb = QPushButton(f"{pct}%")
+            pb.setFixedHeight(18)
+            pb.setFont(mono_font(6, QFont.Weight.DemiBold))
+            pb.setStyleSheet(f"""
+                QPushButton {{
+                    background: {C.PANEL2};
+                    color: {C.TEXT_MED};
+                    border: 1px solid {C.BORDER_A};
+                    border-radius: 2px;
+                    padding: 0 2px;
+                }}
+                QPushButton:hover {{
+                    color: #ffffff;
+                    border-color: {C.PRI};
+                    background: rgba(142, 155, 255, 0.15);
+                }}
+            """)
+            pb.clicked.connect(lambda _, v=pct: self._set_preset(v))
+            p_row.addWidget(pb)
+        lay.addLayout(p_row)
+
+    def _on_slider_moved(self, val: int):
+        self._val_lbl.setText(f"{val}%")
+        self._duck_lbl.setText(f"SPEECH DUCK LEVEL: {int(val * 0.5)}%")
+        self._engine.set_base_volume(val / 100.0)
+
+    def _set_preset(self, val: int):
+        self._slider.setValue(val)
+
+
+class CyberGraphicLineButton(QPushButton):
+    """
+    Tactical button rendered strictly with vector graphic lines,
+    sharp 2px border radius, and HUD theme glow instead of generic emoji text.
+    """
+    def __init__(self, mode: str = "play", parent=None):
+        super().__init__(parent)
+        self._mode = mode  # "prev" | "play" | "pause" | "next" | "loop"
+        self._hovered = False
+        self._pressed = False
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def set_mode(self, mode: str):
+        if self._mode != mode:
+            self._mode = mode
+            self.update()
+
+    def enterEvent(self, e):
+        self._hovered = True
+        self.update()
+        super().enterEvent(e)
+
+    def leaveEvent(self, e):
+        self._hovered = False
+        self._pressed = False
+        self.update()
+        super().leaveEvent(e)
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.MouseButton.LeftButton:
+            self._pressed = True
+            self.update()
+        super().mousePressEvent(e)
+
+    def mouseReleaseEvent(self, e):
+        self._pressed = False
+        self.update()
+        super().mouseReleaseEvent(e)
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        if not p.isActive():
+            return
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        W, H = self.width(), self.height()
+        cx, cy = W / 2.0, H / 2.0
+
+        if self._mode in ("play", "pause"):
+            active_col = qcol(C.GREEN)
+            bg_col = QColor(active_col.red(), active_col.green(), active_col.blue(), 38) if self._hovered else QColor(active_col.red(), active_col.green(), active_col.blue(), 16)
+            bdr_col = active_col if self._hovered else QColor(active_col.red(), active_col.green(), active_col.blue(), 90)
+            line_col = QColor("#ffffff") if self._hovered else active_col
+        else:
+            active_col = qcol(C.PRI)
+            bg_col = QColor(active_col.red(), active_col.green(), active_col.blue(), 30) if self._hovered else qcol(C.PANEL)
+            bdr_col = active_col if self._hovered else qcol(C.BORDER_A)
+            line_col = QColor("#ffffff") if self._hovered else (active_col if self._hovered else qcol(C.TEXT_MED))
+
+        if self._pressed:
+            bg_col = QColor(active_col.red(), active_col.green(), active_col.blue(), 60)
+
+        # Draw cyber button background box
+        p.fillRect(QRectF(1, 1, W - 2, H - 2), bg_col)
+        p.setPen(QPen(bdr_col, 1))
+        p.drawRect(QRectF(1, 1, W - 2, H - 2))
+
+        # Setup crisp line pen
+        pen = QPen(line_col, 1.8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.MiterJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+
+        if self._mode == "prev":
+            # Left stop line
+            p.drawLine(QLineF(cx - 5.0, cy - 5.5, cx - 5.0, cy + 5.5))
+            # Leftward graphic chevron
+            path = QPainterPath()
+            path.moveTo(cx + 4.5, cy - 5.0)
+            path.lineTo(cx - 2.5, cy)
+            path.lineTo(cx + 4.5, cy + 5.0)
+            path.closeSubpath()
+            p.drawPath(path)
+            if self._hovered:
+                p.fillPath(path, QBrush(QColor(line_col.red(), line_col.green(), line_col.blue(), 50)))
+
+        elif self._mode == "next":
+            # Rightward graphic chevron
+            path = QPainterPath()
+            path.moveTo(cx - 4.5, cy - 5.0)
+            path.lineTo(cx + 2.5, cy)
+            path.lineTo(cx - 4.5, cy + 5.0)
+            path.closeSubpath()
+            p.drawPath(path)
+            if self._hovered:
+                p.fillPath(path, QBrush(QColor(line_col.red(), line_col.green(), line_col.blue(), 50)))
+            # Right stop line
+            p.drawLine(QLineF(cx + 5.0, cy - 5.5, cx + 5.0, cy + 5.5))
+
+        elif self._mode == "play":
+            # Sharp vector triangle
+            path = QPainterPath()
+            path.moveTo(cx - 3.5, cy - 5.5)
+            path.lineTo(cx + 5.0, cy)
+            path.lineTo(cx - 3.5, cy + 5.5)
+            path.closeSubpath()
+            p.drawPath(path)
+            if self._hovered or self._pressed:
+                p.fillPath(path, QBrush(QColor(line_col.red(), line_col.green(), line_col.blue(), 70)))
+
+        elif self._mode == "pause":
+            # Two crisp vertical graphic bars
+            p.drawLine(QLineF(cx - 3.0, cy - 5.5, cx - 3.0, cy + 5.5))
+            p.drawLine(QLineF(cx + 3.0, cy - 5.5, cx + 3.0, cy + 5.5))
+
+        elif self._mode == "loop":
+            # Vector loop bracket lines
+            p.drawLine(QLineF(cx - 5.0, cy - 1.5, cx - 5.0, cy - 3.5))
+            p.drawLine(QLineF(cx - 5.0, cy - 3.5, cx + 4.0, cy - 3.5))
+            p.drawLine(QLineF(cx + 1.5, cy - 6.0, cx + 4.0, cy - 3.5))
+            p.drawLine(QLineF(cx + 1.5, cy - 1.0, cx + 4.0, cy - 3.5))
+            p.drawLine(QLineF(cx + 5.0, cy + 1.5, cx + 5.0, cy + 3.5))
+            p.drawLine(QLineF(cx + 5.0, cy + 3.5, cx - 4.0, cy + 3.5))
+            p.drawLine(QLineF(cx - 1.5, cy + 1.0, cx - 4.0, cy + 3.5))
+            p.drawLine(QLineF(cx - 1.5, cy + 6.0, cx - 4.0, cy + 3.5))
+
+
 class TacticalAudioPlayerWidget(QWidget):
     """
     Bottom-Left Cyber Tactical Audio Player Widget.
     Styled matching the HUD / Batcave / Beyond UI theme with sharp 2px corners,
-    live visualizer equalizer bars, volume badge (10% normal, 5% ducked during speech),
-    track dropdown, and an Add/Update music file button.
+    live visualizer equalizer bars, volume badge button with popup slider,
+    track dropdown, and graphic line vector playback buttons.
     """
     def __init__(self, audio_engine: TronScoreBackgroundPlayer, parent=None):
         super().__init__(parent)
         self._engine = audio_engine
+        self._vol_popup: _VolumeSliderPopup | None = None
         self.setFixedHeight(126)
         self.setMinimumWidth(160)
 
@@ -2290,7 +2569,7 @@ class TacticalAudioPlayerWidget(QWidget):
         lay.setContentsMargins(6, 6, 6, 6)
         lay.setSpacing(4)
 
-        # ── 1. Top Header Row: Animated EQ + Title + Volume Pill ───────────
+        # ── 1. Top Header Row: Animated EQ + Title + Clickable Volume Pill ─
         top_row = QHBoxLayout()
         top_row.setContentsMargins(0, 0, 0, 0)
         top_row.setSpacing(4)
@@ -2305,12 +2584,14 @@ class TacticalAudioPlayerWidget(QWidget):
 
         top_row.addStretch()
 
-        self._vol_badge = QLabel("10%")
-        self._vol_badge.setFont(mono_font(6, QFont.Weight.Bold))
-        self._vol_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._vol_badge.setFixedHeight(16)
-        self._update_badge(False, 0.10)
-        top_row.addWidget(self._vol_badge)
+        self._vol_btn = QPushButton("10%")
+        self._vol_btn.setFont(mono_font(6.5, QFont.Weight.Bold))
+        self._vol_btn.setFixedHeight(18)
+        self._vol_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._vol_btn.setToolTip("Click to adjust audio gain slider")
+        self._vol_btn.clicked.connect(self._toggle_volume_popup)
+        self._update_badge(False, self._engine.base_volume())
+        top_row.addWidget(self._vol_btn)
 
         lay.addLayout(top_row)
 
@@ -2370,81 +2651,35 @@ class TacticalAudioPlayerWidget(QWidget):
 
         lay.addLayout(sel_row)
 
-        # ── 4. Playback Controls Row: [ ⏮ ] [ ⏯ ] [ ⏭ ] [ 🔁 ] ─────────────
+        # ── 4. Playback Graphic Line Controls: [ ⏮ ] [ ⏯ ] [ ⏭ ] [ 🔁 ] ─────
         ctl_row = QHBoxLayout()
         ctl_row.setContentsMargins(0, 0, 0, 0)
         ctl_row.setSpacing(4)
 
-        btn_style = f"""
-            QPushButton {{
-                background: {C.PANEL};
-                color: {C.TEXT_MED};
-                border: 1px solid {C.BORDER_A};
-                border-radius: 2px;
-                font-size: 10px;
-            }}
-            QPushButton:hover {{
-                color: #ffffff;
-                border-color: {C.PRI};
-                background: rgba(142, 155, 255, 0.12);
-            }}
-            QPushButton:pressed {{
-                background: {C.PRI_DIM};
-                color: #05060a;
-            }}
-        """
-
-        self._btn_prev = QPushButton("⏮")
-        self._btn_prev.setFixedHeight(22)
-        self._btn_prev.setStyleSheet(btn_style)
+        self._btn_prev = CyberGraphicLineButton("prev")
+        self._btn_prev.setFixedHeight(24)
+        self._btn_prev.setMinimumWidth(32)
         self._btn_prev.setToolTip("Previous track")
         self._btn_prev.clicked.connect(self._engine.prev_track)
         ctl_row.addWidget(self._btn_prev)
 
-        self._btn_play = QPushButton("⏸" if self._engine.is_playing() else "▶")
-        self._btn_play.setFixedHeight(22)
-        self._btn_play.setStyleSheet(f"""
-            QPushButton {{
-                background: rgba(78, 242, 187, 0.08);
-                color: {C.GREEN};
-                border: 1px solid rgba(78, 242, 187, 0.45);
-                border-radius: 2px;
-                font-size: 10px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{
-                background: {C.GREEN};
-                color: #05060a;
-                border: 1px solid {C.GREEN};
-            }}
-            QPushButton:pressed {{
-                background: {C.GREEN_D};
-                color: #ffffff;
-            }}
-        """)
+        self._btn_play = CyberGraphicLineButton("pause" if self._engine.is_playing() else "play")
+        self._btn_play.setFixedHeight(24)
+        self._btn_play.setMinimumWidth(34)
         self._btn_play.setToolTip("Play / Pause background music")
         self._btn_play.clicked.connect(self._on_toggle_play)
         ctl_row.addWidget(self._btn_play)
 
-        self._btn_next = QPushButton("⏭")
-        self._btn_next.setFixedHeight(22)
-        self._btn_next.setStyleSheet(btn_style)
+        self._btn_next = CyberGraphicLineButton("next")
+        self._btn_next.setFixedHeight(24)
+        self._btn_next.setMinimumWidth(32)
         self._btn_next.setToolTip("Next track")
         self._btn_next.clicked.connect(self._engine.next_track)
         ctl_row.addWidget(self._btn_next)
 
-        self._btn_loop = QPushButton("🔁")
-        self._btn_loop.setFixedHeight(22)
-        self._btn_loop.setFixedWidth(24)
-        self._btn_loop.setStyleSheet(f"""
-            QPushButton {{
-                background: rgba(0, 240, 255, 0.10);
-                color: {C.PRI};
-                border: 1px solid {C.PRI};
-                border-radius: 2px;
-                font-size: 9px;
-            }}
-        """)
+        self._btn_loop = CyberGraphicLineButton("loop")
+        self._btn_loop.setFixedHeight(24)
+        self._btn_loop.setMinimumWidth(28)
         self._btn_loop.setToolTip("Continuous Loop (Always Active)")
         ctl_row.addWidget(self._btn_loop)
 
@@ -2456,34 +2691,69 @@ class TacticalAudioPlayerWidget(QWidget):
         self._engine.ducked_state_changed.connect(self._on_ducked_state_changed)
         self._engine.playlist_updated.connect(self._on_playlist_updated)
 
+    def _toggle_volume_popup(self):
+        if self._vol_popup is None:
+            self._vol_popup = _VolumeSliderPopup(self._engine, self)
+
+        if self._vol_popup.isVisible():
+            self._vol_popup.close()
+            return
+
+        pt = self.mapToGlobal(QPoint(0, 0))
+        pop_x = pt.x()
+        pop_y = pt.y() - self._vol_popup.height() - 4
+        if pop_y < 40:
+            pop_y = pt.y() + self.height() + 4
+        self._vol_popup.move(pop_x, pop_y)
+        self._vol_popup.show()
+        self._vol_popup.raise_()
+        self._vol_popup.activateWindow()
+
     def _update_badge(self, is_ducked: bool, vol: float):
         if not self._engine.is_playing():
-            self._vol_badge.setText("PAUSED")
-            self._vol_badge.setStyleSheet(f"""
-                color: {C.TEXT_DIM};
-                background: rgba(255, 255, 255, 0.04);
-                border: 1px solid {C.BORDER};
-                border-radius: 2px;
-                padding: 1px 4px;
+            self._vol_btn.setText("PAUSED")
+            self._vol_btn.setStyleSheet(f"""
+                QPushButton {{
+                    color: {C.TEXT_DIM};
+                    background: rgba(255, 255, 255, 0.04);
+                    border: 1px solid {C.BORDER};
+                    border-radius: 2px;
+                    padding: 1px 4px;
+                }}
+                QPushButton:hover {{
+                    border-color: {C.PRI};
+                    color: #ffffff;
+                }}
             """)
         elif is_ducked:
-            self._vol_badge.setText("DUCK 5%")
-            self._vol_badge.setStyleSheet("""
-                color: #ff5577;
-                background: rgba(255, 85, 119, 0.15);
-                border: 1px solid #ff5577;
-                border-radius: 2px;
-                padding: 1px 4px;
+            self._vol_btn.setText(f"DUCK {int(self._engine.base_volume() * 50)}%")
+            self._vol_btn.setStyleSheet("""
+                QPushButton {{
+                    color: #ff5577;
+                    background: rgba(255, 85, 119, 0.15);
+                    border: 1px solid #ff5577;
+                    border-radius: 2px;
+                    padding: 1px 4px;
+                }}
+                QPushButton:hover {{
+                    background: rgba(255, 85, 119, 0.25);
+                }}
             """)
         else:
-            pct = int(vol * 100)
-            self._vol_badge.setText(f"{pct}%")
-            self._vol_badge.setStyleSheet(f"""
-                color: {C.GREEN};
-                background: rgba(78, 242, 187, 0.08);
-                border: 1px solid rgba(78, 242, 187, 0.45);
-                border-radius: 2px;
-                padding: 1px 4px;
+            pct = int(self._engine.base_volume() * 100)
+            self._vol_btn.setText(f"{pct}%")
+            self._vol_btn.setStyleSheet(f"""
+                QPushButton {{
+                    color: {C.GREEN};
+                    background: rgba(78, 242, 187, 0.08);
+                    border: 1px solid rgba(78, 242, 187, 0.45);
+                    border-radius: 2px;
+                    padding: 1px 4px;
+                }}
+                QPushButton:hover {{
+                    border-color: {C.GREEN};
+                    background: rgba(78, 242, 187, 0.20);
+                }}
             """)
 
     def _refresh_combo(self):
@@ -2536,11 +2806,11 @@ class TacticalAudioPlayerWidget(QWidget):
         self._track_lbl.setText(stem)
         self._track_lbl.setToolTip(path)
         self._refresh_combo()
-        self._update_badge(self._engine._is_speaking_ducked, self._engine.NORMAL_VOL)
+        self._update_badge(self._engine._is_speaking_ducked, self._engine.base_volume())
 
     def _on_playback_state_changed(self, is_playing: bool):
-        self._btn_play.setText("⏸" if is_playing else "▶")
-        self._update_badge(self._engine._is_speaking_ducked, self._engine.NORMAL_VOL)
+        self._btn_play.set_mode("pause" if is_playing else "play")
+        self._update_badge(self._engine._is_speaking_ducked, self._engine.base_volume())
         if hasattr(self, "_eq_widget") and self._eq_widget:
             self._eq_widget.update()
 
