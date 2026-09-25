@@ -5503,14 +5503,14 @@ class MainWindow(QMainWindow):
 
         # 2. Segmented tab header: Telemetry vs Dossier Notes
         tab_row = QHBoxLayout(); tab_row.setSpacing(6)
-        self._tab_activity_btn = QPushButton("◈ TELEMETRY")
+        self._tab_activity_btn = QPushButton("[ ◈ ]  TELEMETRY")
         self._tab_activity_btn.setFixedHeight(28)
         self._tab_activity_btn.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=0.8))
         self._tab_activity_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._tab_activity_btn.setCheckable(True)
         self._tab_activity_btn.setChecked(True)
 
-        self._tab_notes_btn = QPushButton("📝 DOSSIER")
+        self._tab_notes_btn = QPushButton("[ ▤ ]  INTEL // NOTES")
         self._tab_notes_btn.setFixedHeight(28)
         self._tab_notes_btn.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=0.8))
         self._tab_notes_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -6762,29 +6762,34 @@ class MainWindow(QMainWindow):
         self._terminal_stack.setCurrentIndex(index)
         self._update_tab_button_styles(index)
         cnt = self._notes_terminal.count()
-        self._tab_notes_btn.setText(f"📝 INTEL & NOTES ({cnt})")
+        count_str = f" ({cnt})" if cnt > 0 else ""
+        self._tab_notes_btn.setText(f"[ ▤ ]  INTEL // NOTES{count_str}")
 
     def _update_tab_button_styles(self, active_index: int):
         _ACTIVE_STYLE = f"""
             QPushButton {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(0, 240, 255, 0.25), stop:1 rgba(0, 180, 255, 0.12));
-                color: #ffffff;
+                background: {C.PANEL2};
+                color: {C.PRI};
                 border: 1px solid {C.PRI};
-                border-radius: 7px;
+                border-radius: 2px;
                 font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background: {C.PRI};
+                color: {C.DARK};
             }}
         """
         _INACTIVE_STYLE = f"""
             QPushButton {{
-                background: rgba(255, 255, 255, 0.04);
+                background: {C.PANEL2};
                 color: {C.TEXT_MED};
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 7px;
+                border: 1px solid {C.BORDER_A};
+                border-radius: 2px;
             }}
             QPushButton:hover {{
-                background: rgba(0, 240, 255, 0.08);
+                background: rgba(142, 155, 255, 0.10);
                 color: #ffffff;
-                border: 1px solid rgba(0, 240, 255, 0.30);
+                border: 1px solid {C.PRI};
             }}
         """
         if active_index == 0:
@@ -6800,23 +6805,24 @@ class MainWindow(QMainWindow):
 
     def _on_notes_count_updated(self, count: int):
         cur_idx = self._terminal_stack.currentIndex()
+        count_str = f" ({count})" if count > 0 else ""
         if cur_idx == 0 and count > 0:
-            self._tab_notes_btn.setText(f"📝 INTEL & NOTES • ({count})")
+            self._tab_notes_btn.setText(f"[ ▤ ]  INTEL // NOTES • ({count})")
             self._tab_notes_btn.setStyleSheet(f"""
                 QPushButton {{
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(255, 184, 0, 0.28), stop:1 rgba(0, 240, 255, 0.20));
-                    color: #fffae0;
-                    border: 1px solid rgba(255, 184, 0, 0.85);
-                    border-radius: 7px;
+                    background: {C.PANEL2};
+                    color: {C.ACC};
+                    border: 1px solid {C.ACC};
+                    border-radius: 2px;
                     font-weight: bold;
                 }}
                 QPushButton:hover {{
-                    background: rgba(0, 240, 255, 0.30);
-                    color: #ffffff;
+                    background: {C.ACC};
+                    color: {C.DARK};
                 }}
             """)
         else:
-            self._tab_notes_btn.setText(f"📝 INTEL & NOTES ({count})")
+            self._tab_notes_btn.setText(f"[ ▤ ]  INTEL // NOTES{count_str}")
 
     def _on_intel_note_received(self, title: str, content: str, note_type: str):
         self._notes_terminal.add_note(title, content, note_type)
