@@ -5288,51 +5288,54 @@ class MainWindow(QMainWindow):
         lay = QHBoxLayout(w)
         lay.setContentsMargins(14, 0, 14, 0)
 
-        self._drawer_btn = QPushButton("⚙  TACTICAL CONTROLS")
+        self._drawer_btn = QPushButton("[ ⚙ ]  TACTICAL CONTROLS")
         self._drawer_btn.setFixedHeight(30)
-        self._drawer_btn.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.5))
+        self._drawer_btn.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.6))
         self._drawer_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._drawer_btn.setToolTip("Batcave System Controls & Neural Parameters")
         self._drawer_btn.setStyleSheet(f"""
             QPushButton {{
-                background: rgba(255, 255, 255, 0.04);
+                background: {C.PANEL2};
                 color: {C.TEXT_MED};
-                border: 1px solid {C.BORDER};
-                border-radius: 6px;
-                padding: 0 10px;
+                border: 1px solid {C.BORDER_A};
+                border-radius: 2px;
+                padding: 0 12px;
             }}
             QPushButton:hover {{
-                background: rgba(142, 155, 255, 0.16);
+                background: rgba(142, 155, 255, 0.14);
                 color: #ffffff;
                 border: 1px solid {C.PRI};
             }}
             QPushButton:checked {{
-                color: {C.PRI};
+                color: {C.DARK};
                 border: 1px solid {C.PRI};
-                background: rgba(142, 155, 255, 0.22);
+                background: {C.PRI};
             }}
         """)
         self._drawer_btn.setCheckable(True)
         self._drawer_btn.clicked.connect(self._toggle_drawer)
         lay.addWidget(self._drawer_btn)
 
-        self._directives_btn = QPushButton("📋  DIRECTIVES ARCHIVE")
+        self._directives_btn = QPushButton("[ ▤ ]  DIRECTIVES ARCHIVE")
         self._directives_btn.setFixedHeight(30)
-        self._directives_btn.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.5))
+        self._directives_btn.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.6))
         self._directives_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._directives_btn.setToolTip("View full catalog of skills & capabilities")
         self._directives_btn.setStyleSheet(f"""
             QPushButton {{
-                background: rgba(255, 255, 255, 0.04);
+                background: {C.PANEL2};
                 color: {C.TEXT_MED};
-                border: 1px solid {C.BORDER};
-                border-radius: 6px;
-                padding: 0 10px;
+                border: 1px solid {C.BORDER_A};
+                border-radius: 2px;
+                padding: 0 12px;
             }}
             QPushButton:hover {{
-                background: rgba(142, 155, 255, 0.16);
+                background: rgba(142, 155, 255, 0.14);
                 color: #ffffff;
                 border: 1px solid {C.PRI};
+            }}
+            QPushButton:pressed {{
+                background: rgba(142, 155, 255, 0.25);
             }}
         """)
         self._directives_btn.clicked.connect(self._open_directives)
@@ -5537,38 +5540,39 @@ class MainWindow(QMainWindow):
         """Floating overlay panel shown when the ⚙ header button is toggled."""
         _BTN_STYLE_PRI = f"""
             QPushButton {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(0, 240, 255, 0.25), stop:1 rgba(0, 180, 255, 0.12));
-                color: #ffffff;
+                background: rgba(142, 155, 255, 0.12);
+                color: {C.PRI};
                 border: 1px solid {C.PRI};
-                border-radius: 8px;
-                text-align: left; padding: 0 12px;
+                border-radius: 2px;
+                text-align: left; padding: 0 10px;
                 font-weight: bold;
             }}
             QPushButton:hover {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(0, 240, 255, 0.45), stop:1 rgba(0, 210, 255, 0.28));
-                border-color: #ffffff;
-                color: #ffffff;
+                background: {C.PRI};
+                color: {C.DARK};
+                border: 1px solid {C.PRI};
             }}
             QPushButton:pressed {{
-                background: rgba(0, 240, 255, 0.2);
+                background: {C.PRI_DIM};
+                color: {C.DARK};
             }}
         """
         _BTN_STYLE_DIM = f"""
             QPushButton {{
-                background: rgba(255, 255, 255, 0.04);
+                background: {C.PANEL2};
                 color: {C.TEXT_MED};
-                border: 1px solid rgba(0, 240, 255, 0.12);
-                border-radius: 8px;
-                text-align: left; padding: 0 12px;
+                border: 1px solid {C.BORDER_A};
+                border-radius: 2px;
+                text-align: left; padding: 0 10px;
                 font-weight: 500;
             }}
             QPushButton:hover {{
                 color: #ffffff;
                 border-color: {C.PRI};
-                background: rgba(0, 240, 255, 0.12);
+                background: rgba(142, 155, 255, 0.10);
             }}
             QPushButton:pressed {{
-                background: rgba(0, 240, 255, 0.05);
+                background: rgba(142, 155, 255, 0.20);
             }}
         """
 
@@ -5576,65 +5580,65 @@ class MainWindow(QMainWindow):
         w.setObjectName("QuickDrawer")
         w.setStyleSheet(f"""
             QWidget#QuickDrawer {{
-                background: rgba(4, 14, 25, 0.96);
-                border: 1px solid rgba(0, 240, 255, 0.24);
-                border-radius: 14px;
+                background: rgba(5, 7, 13, 0.98);
+                border: 1px solid {C.BORDER_B};
+                border-radius: 2px;
             }}
         """)
         w.hide()
 
         lay = QVBoxLayout(w)
-        lay.setContentsMargins(14, 12, 14, 14)
-        lay.setSpacing(7)
+        lay.setContentsMargins(12, 12, 12, 12)
+        lay.setSpacing(6)
 
-        hdr = QLabel("◈ BATCAVE TACTICAL SYSTEMS")
-        hdr.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=1.5))
+        hdr = QLabel("◈  BATCAVE TACTICAL SYSTEMS")
+        hdr.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=1.5))
         hdr.setStyleSheet(f"color: {C.PRI}; background: transparent; "
-                          f"border-bottom: 1px solid rgba(0, 240, 255, 0.15); padding-bottom: 6px;")
+                          f"border-bottom: 1px solid {C.BORDER_A}; padding-bottom: 6px;")
         lay.addWidget(hdr)
 
-        remote_btn = QPushButton("📡  SATELLITE COMMS // UPLINK")
+        remote_btn = QPushButton("[ ⟁ ]  SATELLITE COMMS // UPLINK")
         remote_btn.setFixedHeight(30)
-        remote_btn.setFont(tech_font(8, QFont.Weight.Bold))
+        remote_btn.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.5))
         remote_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         remote_btn.setStyleSheet(_BTN_STYLE_PRI)
         remote_btn.clicked.connect(self._open_remote)
         lay.addWidget(remote_btn)
 
-        dir_btn = QPushButton("📂  TACTICAL DOSSIER & DIRECTIVES")
+        dir_btn = QPushButton("[ ▤ ]  TACTICAL DOSSIER // DIRECTIVES")
         dir_btn.setFixedHeight(30)
-        dir_btn.setFont(tech_font(8, QFont.Weight.Bold))
+        dir_btn.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.5))
         dir_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         dir_btn.setStyleSheet(_BTN_STYLE_PRI)
         dir_btn.clicked.connect(self._open_directives)
         lay.addWidget(dir_btn)
 
-        fs_btn = QPushButton("⛶  TACTICAL HUD VIEW  [F11]")
+        fs_btn = QPushButton("[ ⛶ ]  TACTICAL HUD VIEW  [F11]")
         fs_btn.setFixedHeight(29)
-        fs_btn.setFont(tech_font(8))
+        fs_btn.setFont(mono_font(8, letter_spacing=0.5))
         fs_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         fs_btn.setStyleSheet(_BTN_STYLE_DIM)
         fs_btn.clicked.connect(self._toggle_fullscreen)
         lay.addWidget(fs_btn)
 
-        sc_btn = QPushButton("⊞  DEPLOY BATCAVE CONSOLE")
+        sc_btn = QPushButton("[ ⊞ ]  DEPLOY BATCAVE CONSOLE")
         sc_btn.setFixedHeight(29)
-        sc_btn.setFont(tech_font(8))
+        sc_btn.setFont(mono_font(8, letter_spacing=0.5))
         sc_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         sc_btn.setStyleSheet(_BTN_STYLE_DIM)
         sc_btn.clicked.connect(self._create_desktop_shortcut)
         lay.addWidget(sc_btn)
 
-        self._autostart_btn = QPushButton("⚡  BATCOMPUTER AUTO-BOOT: OFF")
+        self._autostart_btn = QPushButton("[ ◈ ]  BATCOMPUTER AUTO-BOOT: OFF")
         self._autostart_btn.setFixedHeight(29)
-        self._autostart_btn.setFont(tech_font(8))
+        self._autostart_btn.setFont(mono_font(8, letter_spacing=0.5))
         self._autostart_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._autostart_btn.clicked.connect(self._toggle_autostart)
         lay.addWidget(self._autostart_btn)
 
-        cust_btn = QPushButton("⚙  RECONFIGURE BATCOMPUTER MATRIX")
+        cust_btn = QPushButton("[ ⚙ ]  RECONFIGURE BATCOMPUTER")
         cust_btn.setFixedHeight(29)
-        cust_btn.setFont(tech_font(8))
+        cust_btn.setFont(mono_font(8, letter_spacing=0.5))
         cust_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         cust_btn.setStyleSheet(_BTN_STYLE_DIM)
         cust_btn.clicked.connect(self._open_customize)
@@ -5642,7 +5646,7 @@ class MainWindow(QMainWindow):
 
         self._brief_btn = QPushButton()
         self._brief_btn.setFixedHeight(29)
-        self._brief_btn.setFont(tech_font(8))
+        self._brief_btn.setFont(mono_font(8, letter_spacing=0.5))
         self._brief_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._brief_btn.clicked.connect(self._toggle_brief)
         lay.addWidget(self._brief_btn)
@@ -5650,24 +5654,24 @@ class MainWindow(QMainWindow):
         # ── Wake word ──────────────────────────────────────────────────────────
         self._wake_btn = QPushButton()
         self._wake_btn.setFixedHeight(29)
-        self._wake_btn.setFont(tech_font(8))
+        self._wake_btn.setFont(mono_font(8, letter_spacing=0.5))
         self._wake_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._wake_btn.clicked.connect(self._toggle_wake_word)
         lay.addWidget(self._wake_btn)
 
         self._wake_sleep_btn = QPushButton()
         self._wake_sleep_btn.setFixedHeight(29)
-        self._wake_sleep_btn.setFont(tech_font(8))
+        self._wake_sleep_btn.setFont(mono_font(8, letter_spacing=0.5))
         self._wake_sleep_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._wake_sleep_btn.clicked.connect(self._tap_wake_manual)
         lay.addWidget(self._wake_sleep_btn)
-        self._wake_btn.setText("🎙  COWL VOICE SENSORS")
+        self._wake_btn.setText("[ ◈ ]  COWL VOICE SENSORS")
         self._wake_btn.setStyleSheet(_BTN_STYLE_DIM)
         self._wake_sleep_btn.hide()
 
         self._ptt_btn = QPushButton()
         self._ptt_btn.setFixedHeight(29)
-        self._ptt_btn.setFont(tech_font(8))
+        self._ptt_btn.setFont(mono_font(8, letter_spacing=0.5))
         self._ptt_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._ptt_btn.clicked.connect(self._toggle_ptt)
         lay.addWidget(self._ptt_btn)
@@ -5676,39 +5680,39 @@ class MainWindow(QMainWindow):
 
         self._hud_btn = QPushButton()
         self._hud_btn.setFixedHeight(29)
-        self._hud_btn.setFont(tech_font(8))
+        self._hud_btn.setFont(mono_font(8, letter_spacing=0.5))
         self._hud_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._hud_btn.clicked.connect(self._toggle_hud_style)
         lay.addWidget(self._hud_btn)
         self._refresh_hud_btn()
 
-        audio_btn = QPushButton("🎧  COWL ACOUSTIC ROUTING")
+        audio_btn = QPushButton("[ ☊ ]  COWL ACOUSTIC ROUTING")
         audio_btn.setFixedHeight(29)
-        audio_btn.setFont(tech_font(8))
+        audio_btn.setFont(mono_font(8, letter_spacing=0.5))
         audio_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         audio_btn.setStyleSheet(_BTN_STYLE_DIM)
         audio_btn.clicked.connect(self._open_audio_devices)
         lay.addWidget(audio_btn)
 
-        mem_btn = QPushButton("🧠  WAYNE SECURE ARCHIVES")
+        mem_btn = QPushButton("[ ☵ ]  WAYNE SECURE ARCHIVES")
         mem_btn.setFixedHeight(29)
-        mem_btn.setFont(tech_font(8))
+        mem_btn.setFont(mono_font(8, letter_spacing=0.5))
         mem_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         mem_btn.setStyleSheet(_BTN_STYLE_DIM)
         mem_btn.clicked.connect(self._open_memory_panel)
         lay.addWidget(mem_btn)
 
-        plugin_btn = QPushButton("🧩  TACTICAL MODULES & PLUGINS")
+        plugin_btn = QPushButton("[ ⊞ ]  TACTICAL MODULES // PLUGINS")
         plugin_btn.setFixedHeight(29)
-        plugin_btn.setFont(tech_font(8))
+        plugin_btn.setFont(mono_font(8, letter_spacing=0.5))
         plugin_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         plugin_btn.setStyleSheet(_BTN_STYLE_DIM)
         plugin_btn.clicked.connect(self._open_plugin_manager)
         lay.addWidget(plugin_btn)
 
-        settings_btn = QPushButton("⚙  MODULE PARAMETERS")
+        settings_btn = QPushButton("[ ⚙ ]  MODULE PARAMETERS")
         settings_btn.setFixedHeight(29)
-        settings_btn.setFont(tech_font(8))
+        settings_btn.setFont(mono_font(8, letter_spacing=0.5))
         settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         settings_btn.setStyleSheet(_BTN_STYLE_DIM)
         settings_btn.clicked.connect(self._open_plugin_settings)
@@ -5729,7 +5733,7 @@ class MainWindow(QMainWindow):
     def _position_quick_drawer(self):
         if not hasattr(self, '_quick_drawer'):
             return
-        _W = 244
+        _W = 286
         self._quick_drawer.setFixedWidth(_W)
         self._quick_drawer.adjustSize()
         self._quick_drawer.setGeometry(16, 56, _W, self._quick_drawer.sizeHint().height())
@@ -6410,24 +6414,26 @@ class MainWindow(QMainWindow):
         if not hasattr(self, '_autostart_btn'):
             return
         if enabled:
-            self._autostart_btn.setText("◉  AUTO-START: ON")
+            self._autostart_btn.setText("[ ◈ ]  AUTO-START : ON")
             self._autostart_btn.setStyleSheet(f"""
                 QPushButton {{
-                    background: rgba(0, 255, 157, 0.15); color: {C.GREEN};
-                    border: 1px solid rgba(0, 255, 157, 0.40); border-radius: 8px;
-                    text-align: left; padding: 0 12px; font-weight: 600;
+                    background: rgba(78, 242, 187, 0.08); color: {C.GREEN};
+                    border: 1px solid rgba(78, 242, 187, 0.45); border-radius: 2px;
+                    text-align: left; padding: 0 10px; font-weight: bold;
                 }}
-                QPushButton:hover {{ background: rgba(0, 255, 157, 0.28); color: #ffffff; }}
+                QPushButton:hover {{ background: {C.GREEN}; color: #05060a; border: 1px solid {C.GREEN}; }}
+                QPushButton:pressed {{ background: {C.GREEN_D}; color: #ffffff; }}
             """)
         else:
-            self._autostart_btn.setText("◉  AUTO-START: OFF")
+            self._autostart_btn.setText("[ ⊘ ]  AUTO-START : OFF")
             self._autostart_btn.setStyleSheet(f"""
                 QPushButton {{
-                    background: rgba(255, 255, 255, 0.04); color: {C.TEXT_MED};
-                    border: 1px solid rgba(0, 240, 255, 0.12); border-radius: 8px;
-                    text-align: left; padding: 0 12px; font-weight: 500;
+                    background: {C.PANEL2}; color: {C.TEXT_MED};
+                    border: 1px solid {C.BORDER_A}; border-radius: 2px;
+                    text-align: left; padding: 0 10px; font-weight: 500;
                 }}
-                QPushButton:hover {{ color: #ffffff; border: 1px solid rgba(0, 240, 255, 0.35); background: rgba(0, 240, 255, 0.08); }}
+                QPushButton:hover {{ color: #ffffff; border: 1px solid {C.PRI}; background: rgba(142, 155, 255, 0.10); }}
+                QPushButton:pressed {{ background: rgba(142, 155, 255, 0.20); }}
             """)
 
     def _toggle_brief(self):
@@ -6465,28 +6471,30 @@ class MainWindow(QMainWindow):
             return
         st = self._wake_state()
         _on = f"""
-            QPushButton {{ background: rgba(0, 255, 157, 0.15); color: {C.GREEN};
-                border: 1px solid rgba(0, 255, 157, 0.40); border-radius: 8px;
-                text-align: left; padding: 0 12px; font-weight: 600; }}
-            QPushButton:hover {{ background: rgba(0, 255, 157, 0.28); color: #ffffff; }}"""
+            QPushButton {{ background: rgba(78, 242, 187, 0.08); color: {C.GREEN};
+                border: 1px solid rgba(78, 242, 187, 0.45); border-radius: 2px;
+                text-align: left; padding: 0 10px; font-weight: bold; }}
+            QPushButton:hover {{ background: {C.GREEN}; color: #05060a; border: 1px solid {C.GREEN}; }}
+            QPushButton:pressed {{ background: {C.GREEN_D}; color: #ffffff; }}"""
         _off = f"""
-            QPushButton {{ background: rgba(255, 255, 255, 0.04); color: {C.TEXT_MED};
-                border: 1px solid rgba(0, 240, 255, 0.12); border-radius: 8px;
-                text-align: left; padding: 0 12px; font-weight: 500; }}
-            QPushButton:hover {{ color: #ffffff; border: 1px solid rgba(0, 240, 255, 0.35); background: rgba(0, 240, 255, 0.08); }}"""
+            QPushButton {{ background: {C.PANEL2}; color: {C.TEXT_MED};
+                border: 1px solid {C.BORDER_A}; border-radius: 2px;
+                text-align: left; padding: 0 10px; font-weight: 500; }}
+            QPushButton:hover {{ color: #ffffff; border: 1px solid {C.PRI}; background: rgba(142, 155, 255, 0.10); }}
+            QPushButton:pressed {{ background: rgba(142, 155, 255, 0.20); }}"""
         self._wake_btn.setEnabled(True)
         if not st["ready"]:
-            self._wake_btn.setText("⬇  COWL SENSORS: DOWNLOAD")
+            self._wake_btn.setText("[ ⬇ ]  COWL SENSORS : DOWNLOAD")
             self._wake_btn.setStyleSheet(_off)
             self._wake_sleep_btn.hide()
         elif st["enabled"]:
-            self._wake_btn.setText("🎙  COWL SENSORS: ONLINE")
+            self._wake_btn.setText("[ ◈ ]  COWL SENSORS : ONLINE")
             self._wake_btn.setStyleSheet(_on)
             self._wake_sleep_btn.show()
-            self._wake_sleep_btn.setText("😴  COWL STANDBY" if st["awake"] else "⚡  ACTIVATE COWL")
+            self._wake_sleep_btn.setText("[ ⊘ ]  COWL STANDBY" if st["awake"] else "[ ⚡ ]  ACTIVATE COWL")
             self._wake_sleep_btn.setStyleSheet(_off)
         else:
-            self._wake_btn.setText("🎙  COWL SENSORS: STANDBY")
+            self._wake_btn.setText("[ ⊘ ]  COWL SENSORS : STANDBY")
             self._wake_btn.setStyleSheet(_off)
             self._wake_sleep_btn.hide()
 
@@ -6497,19 +6505,21 @@ class MainWindow(QMainWindow):
         from core.hotkey import chord_label
         from memory.config_manager import get_push_to_talk_enabled
         _on = f"""
-            QPushButton {{ background: rgba(0, 255, 157, 0.15); color: {C.GREEN};
-                border: 1px solid rgba(0, 255, 157, 0.40); border-radius: 8px;
-                text-align: left; padding: 0 12px; font-weight: 600; }}
-            QPushButton:hover {{ background: rgba(0, 255, 157, 0.28); color: #ffffff; }}"""
+            QPushButton {{ background: rgba(78, 242, 187, 0.08); color: {C.GREEN};
+                border: 1px solid rgba(78, 242, 187, 0.45); border-radius: 2px;
+                text-align: left; padding: 0 10px; font-weight: bold; }}
+            QPushButton:hover {{ background: {C.GREEN}; color: #05060a; border: 1px solid {C.GREEN}; }}
+            QPushButton:pressed {{ background: {C.GREEN_D}; color: #ffffff; }}"""
         _off = f"""
-            QPushButton {{ background: rgba(255, 255, 255, 0.04); color: {C.TEXT_MED};
-                border: 1px solid rgba(0, 240, 255, 0.12); border-radius: 8px;
-                text-align: left; padding: 0 12px; font-weight: 500; }}
-            QPushButton:hover {{ color: #ffffff; border: 1px solid rgba(0, 240, 255, 0.35); background: rgba(0, 240, 255, 0.08); }}"""
+            QPushButton {{ background: {C.PANEL2}; color: {C.TEXT_MED};
+                border: 1px solid {C.BORDER_A}; border-radius: 2px;
+                text-align: left; padding: 0 10px; font-weight: 500; }}
+            QPushButton:hover {{ color: #ffffff; border: 1px solid {C.PRI}; background: rgba(142, 155, 255, 0.10); }}
+            QPushButton:pressed {{ background: rgba(142, 155, 255, 0.20); }}"""
 
         ptt = get_push_to_talk_enabled()
-        self._ptt_btn.setText(f"🎚  TACTICAL COMMS PTT: {chord_label()}" if ptt
-                              else "🎚  TACTICAL COMMS PTT: OFF")
+        self._ptt_btn.setText(f"[ ◈ ]  TACTICAL COMMS PTT : {chord_label()}" if ptt
+                              else "[ ⊘ ]  TACTICAL COMMS PTT : OFF")
         self._ptt_btn.setStyleSheet(_on if ptt else _off)
         self._ptt_btn.setToolTip(
             "Microphone stays closed until you hold the key — nothing is sent "
@@ -6523,12 +6533,13 @@ class MainWindow(QMainWindow):
         # Neither state is "off", so both read as active — this is a choice
         # between two things, not a switch with a disabled side.
         style = f"""
-            QPushButton {{ background: rgba(0, 240, 255, 0.10); color: {C.PRI};
-                border: 1px solid rgba(0, 240, 255, 0.25); border-radius: 8px;
-                text-align: left; padding: 0 12px; font-weight: 600; }}
-            QPushButton:hover {{ color: #ffffff; border: 1px solid rgba(0, 240, 255, 0.5); background: rgba(0, 240, 255, 0.2); }}"""
-        self._hud_btn.setText("🧑  HUD: HOLOGRAM AVATAR" if face
-                              else "◉  BATCOMPUTER TACTICAL CORE")
+            QPushButton {{ background: rgba(142, 155, 255, 0.12); color: {C.PRI};
+                border: 1px solid {C.PRI}; border-radius: 2px;
+                text-align: left; padding: 0 10px; font-weight: bold; }}
+            QPushButton:hover {{ background: {C.PRI}; color: {C.DARK}; border: 1px solid {C.PRI}; }}
+            QPushButton:pressed {{ background: {C.PRI_DIM}; color: {C.DARK}; }}"""
+        self._hud_btn.setText("[ ◈ ]  HUD : HOLOGRAM AVATAR" if face
+                              else "[ ◈ ]  BATCOMPUTER TACTICAL CORE")
         self._hud_btn.setStyleSheet(style)
         self._hud_btn.setToolTip(
             "An animated head that speaks your words and shows what JARVIS is "
@@ -6658,24 +6669,26 @@ class MainWindow(QMainWindow):
         if not hasattr(self, '_brief_btn'):
             return
         if enabled:
-            self._brief_btn.setText("🦇  GOTHAM BRIEFING: ON")
+            self._brief_btn.setText("[ ◈ ]  GOTHAM BRIEFING : ON")
             self._brief_btn.setStyleSheet(f"""
                 QPushButton {{
-                    background: rgba(0, 255, 157, 0.15); color: {C.GREEN};
-                    border: 1px solid rgba(0, 255, 157, 0.40); border-radius: 8px;
-                    text-align: left; padding: 0 12px; font-weight: 600;
+                    background: rgba(78, 242, 187, 0.08); color: {C.GREEN};
+                    border: 1px solid rgba(78, 242, 187, 0.45); border-radius: 2px;
+                    text-align: left; padding: 0 10px; font-weight: bold;
                 }}
-                QPushButton:hover {{ background: rgba(0, 255, 157, 0.28); color: #ffffff; }}
+                QPushButton:hover {{ background: {C.GREEN}; color: #05060a; border: 1px solid {C.GREEN}; }}
+                QPushButton:pressed {{ background: {C.GREEN_D}; color: #ffffff; }}
             """)
         else:
-            self._brief_btn.setText("🦇  GOTHAM BRIEFING: OFF")
+            self._brief_btn.setText("[ ⊘ ]  GOTHAM BRIEFING : OFF")
             self._brief_btn.setStyleSheet(f"""
                 QPushButton {{
-                    background: rgba(255, 255, 255, 0.04); color: {C.TEXT_MED};
-                    border: 1px solid rgba(0, 240, 255, 0.12); border-radius: 8px;
-                    text-align: left; padding: 0 12px; font-weight: 500;
+                    background: {C.PANEL2}; color: {C.TEXT_MED};
+                    border: 1px solid {C.BORDER_A}; border-radius: 2px;
+                    text-align: left; padding: 0 10px; font-weight: 500;
                 }}
-                QPushButton:hover {{ color: #ffffff; border: 1px solid rgba(0, 240, 255, 0.35); background: rgba(0, 240, 255, 0.08); }}
+                QPushButton:hover {{ color: #ffffff; border: 1px solid {C.PRI}; background: rgba(142, 155, 255, 0.10); }}
+                QPushButton:pressed {{ background: rgba(142, 155, 255, 0.20); }}
             """)
 
     # ── Directives & Intel Terminal Controls ────────────────────────────────────
