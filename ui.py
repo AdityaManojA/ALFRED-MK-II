@@ -41,6 +41,12 @@ if not hasattr(QFont.Weight, "SemiBold") and hasattr(QFont.Weight, "DemiBold"):
         pass
 
 try:
+    from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+    _HAS_QT_MULTIMEDIA = True
+except Exception:
+    _HAS_QT_MULTIMEDIA = False
+
+try:
     from core.avatar import HoloAvatar
 except Exception:      # pragma: no cover — HUD must never die over cosmetics
     HoloAvatar = None
@@ -54,6 +60,86 @@ def _base_dir() -> Path:
 BASE_DIR   = _base_dir()
 CONFIG_DIR = BASE_DIR / "config"
 API_FILE   = CONFIG_DIR / "api_keys.json"
+
+
+class TronScoreBackgroundPlayer(QObject):
+    """
+    Plays 'The Son of Flynn' (From TRON Legacy Score) continuously on loop.
+    Default volume: 20% (0.20).
+    When ALFRED speaks, automatically ducks volume to 10% (0.10).
+    When ALFRED stops speaking, smoothly restores volume back to 20% (0.20).
+    """
+    NORMAL_VOL = 0.20
+    DUCKED_VOL = 0.10
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._target_vol = self.NORMAL_VOL
+        self._current_vol = self.NORMAL_VOL
+
+        self._player: QMediaPlayer | None = None
+        self._audio: QAudioOutput | None = None
+
+        if not _HAS_QT_MULTIMEDIA:
+            print("[Audio] QtMultimedia not available — background score disabled.")
+            return
+
+        self._fade_timer = QTimer(self)
+        self._fade_timer.setInterval(20)
+        self._fade_timer.timeout.connect(self._step_fade)
+
+        # Locate track in project root or parent workspace
+        _candidates = [
+            BASE_DIR / "The Son of Flynn (From TRON Legacy Score).mp3",
+            Path(__file__).resolve().parent / "The Son of Flynn (From TRON Legacy Score).mp3",
+            Path.cwd() / "The Son of Flynn (From TRON Legacy Score).mp3",
+            Path(r"d:\Projects\Personal-Assistant\Mark-LIV\The Son of Flynn (From TRON Legacy Score).mp3"),
+            Path(r"d:\Projects\Alfred-Mark-II\The Son of Flynn (From TRON Legacy Score).mp3"),
+        ]
+        track_path = next((p for p in _candidates if p.exists()), None)
+
+        if track_path:
+            try:
+                self._player = QMediaPlayer(self)
+                self._audio = QAudioOutput(self)
+                self._player.setAudioOutput(self._audio)
+                self._audio.setVolume(self.NORMAL_VOL)
+                self._player.setSource(QUrl.fromLocalFile(str(track_path.resolve())))
+                self._player.setLoops(QMediaPlayer.Loops.Infinite)
+                self._player.play()
+                print(f"[Audio] Tron Legacy background score started ({track_path.name}) at 20% volume.")
+            except Exception as e:
+                print(f"[Audio] Could not start Tron background score: {e}")
+        else:
+            print("[Audio] Tron background score mp3 not found in workspace.")
+
+    def set_ducked(self, ducked: bool):
+        """Duck to 10% when speaking, restore to 20% when idle/listening."""
+        self._target_vol = self.DUCKED_VOL if ducked else self.NORMAL_VOL
+        if self._fade_timer and not self._fade_timer.isActive():
+            self._fade_timer.start()
+
+    def _step_fade(self):
+        if not self._audio:
+            if self._fade_timer:
+                self._fade_timer.stop()
+            return
+        diff = self._target_vol - self._current_vol
+        if abs(diff) < 0.005:
+            self._current_vol = self._target_vol
+            self._audio.setVolume(self._current_vol)
+            self._fade_timer.stop()
+        else:
+            step = 0.015 if diff > 0 else -0.015
+            self._current_vol += step
+            self._audio.setVolume(max(0.0, min(1.0, self._current_vol)))
+
+    def stop(self):
+        try:
+            if self._player:
+                self._player.stop()
+        except Exception:
+            pass
 
 
 def _read_full_config() -> dict:
@@ -4797,6 +4883,9 @@ class MainWindow(QMainWindow):
         sc_intr = QShortcut(QKeySequence("Escape"), self)
         sc_intr.activated.connect(self._do_interrupt)
 
+        # TRON Legacy background score player (20% default, ducks to 10% when Alfred speaks)
+        self._bg_music = TronScoreBackgroundPlayer(self)
+
     def _show_camera_frame(self, img_bytes: bytes):
         """Slot — display camera preview overlay (main thread)."""
         self._cam_preview.show_frame(img_bytes)
@@ -7099,6 +7188,16 @@ class MainWindow(QMainWindow):
     def _apply_state(self, state: str):
         self.hud.state    = state
         self.hud.speaking = (state == "SPEAKING")
+        if hasattr(self, "_bg_music") and self._bg_music:
+            self._bg_music.set_ducked(state == "SPEAKING")
+
+    def closeEvent(self, e):
+        try:
+            if hasattr(self, "_bg_music") and self._bg_music:
+                self._bg_music.stop()
+        except Exception:
+            pass
+        super().closeEvent(e)
 
     def _check_config(self) -> bool:
         if not API_FILE.exists(): return False
