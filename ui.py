@@ -470,10 +470,13 @@ _MONO_FONT_FAMILIES = (
 )
 
 
-def tech_font(size: int, weight: QFont.Weight = QFont.Weight.Normal, letter_spacing: float | None = None) -> QFont:
+def tech_font(size: int | float, weight: QFont.Weight = QFont.Weight.Normal, letter_spacing: float | None = None) -> QFont:
     f = QFont()
     f.setFamilies(list(_TECH_FONT_FAMILIES))
-    f.setPointSize(size)
+    if isinstance(size, float):
+        f.setPointSizeF(size)
+    else:
+        f.setPointSize(int(size))
     f.setWeight(weight)
     f.setStyleHint(QFont.StyleHint.Monospace)
     if letter_spacing is not None:
@@ -482,10 +485,13 @@ def tech_font(size: int, weight: QFont.Weight = QFont.Weight.Normal, letter_spac
     return f
 
 
-def mono_font(size: int, weight: QFont.Weight = QFont.Weight.Normal, letter_spacing: float | None = None) -> QFont:
+def mono_font(size: int | float, weight: QFont.Weight = QFont.Weight.Normal, letter_spacing: float | None = None) -> QFont:
     f = QFont()
     f.setFamilies(list(_MONO_FONT_FAMILIES))
-    f.setPointSize(size)
+    if isinstance(size, float):
+        f.setPointSizeF(size)
+    else:
+        f.setPointSize(int(size))
     f.setWeight(weight)
     f.setStyleHint(QFont.StyleHint.Monospace)
     if letter_spacing is not None:
@@ -2330,7 +2336,7 @@ class _VolumeSliderPopup(QFrame):
         hdr_row = QHBoxLayout()
         hdr_row.setContentsMargins(0, 0, 0, 0)
         lbl = QLabel("◈ MASTER GAIN MATRIX")
-        lbl.setFont(mono_font(6.5, QFont.Weight.Bold, letter_spacing=0.8))
+        lbl.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=0.8))
         lbl.setStyleSheet(f"color: {C.PRI}; border: none; background: transparent;")
         hdr_row.addWidget(lbl)
         hdr_row.addStretch()
@@ -2585,7 +2591,7 @@ class TacticalAudioPlayerWidget(QWidget):
         top_row.addStretch()
 
         self._vol_btn = QPushButton("10%")
-        self._vol_btn.setFont(mono_font(6.5, QFont.Weight.Bold))
+        self._vol_btn.setFont(mono_font(7, QFont.Weight.Bold))
         self._vol_btn.setFixedHeight(18)
         self._vol_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._vol_btn.setToolTip("Click to adjust audio gain slider")
