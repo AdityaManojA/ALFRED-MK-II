@@ -69,49 +69,113 @@ def _read_full_config() -> dict:
 APP_VERSION  = "MARK LIV"
 APP_PROTOCOL = APP_VERSION.split()[-1]
 
-_DEFAULT_W, _DEFAULT_H = 980, 700
-_MIN_W,     _MIN_H     = 820, 580
-_LEFT_W  = 148
-_RIGHT_W = 340
+_DEFAULT_W, _DEFAULT_H = 1060, 720
+_MIN_W,     _MIN_H     = 880, 600
+_LEFT_W  = 185
+_RIGHT_W = 345
 
 _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
 
+# ── Retro-Futuristic Cyber CRT Palette (Screenshot 1: Dossier / Screenshot 2: Vector) ──
+CRT_THEMES: dict[str, dict] = {
+    "dossier": {
+        "name": "DOSSIER CRT [A-34]",
+        "hex": "#8e9bff",
+        "colors": {
+            "BG": "#090a12",
+            "PANEL": "#0d0f1e",
+            "PANEL2": "#121528",
+            "PANEL_BG": "rgba(13, 15, 30, 0.96)",
+            "BORDER": "#222748",
+            "BORDER_B": "#505bb5",
+            "BORDER_A": "#343a6b",
+            "PRI": "#8e9bff",
+            "PRI_DIM": "#5463cc",
+            "PRI_GHO": "#1a1d36",
+            "ACC": "#ff7390",
+            "ACC2": "#ffd166",
+            "GREEN": "#4ef2bb",
+            "GREEN_D": "#228562",
+            "RED": "#ff2a55",
+            "MUTED_C": "#ff3366",
+            "TEXT": "#e8ecff",
+            "TEXT_DIM": "#707ab0",
+            "TEXT_MED": "#a6b2f0",
+            "TEXT_BRIGHT": "#ffffff",
+            "WHITE": "#f4f6ff",
+            "DARK": "#05060a",
+            "BAR_BG": "#101222",
+        },
+    },
+    "vector": {
+        "name": "VECTOR CRT [WAKU]",
+        "hex": "#a8ff3e",
+        "colors": {
+            "BG": "#060d07",
+            "PANEL": "#09170b",
+            "PANEL2": "#0f2613",
+            "PANEL_BG": "rgba(9, 23, 11, 0.96)",
+            "BORDER": "#1d4724",
+            "BORDER_B": "#48a355",
+            "BORDER_A": "#285828",
+            "PRI": "#a8ff3e",
+            "PRI_DIM": "#62b81d",
+            "PRI_GHO": "#14290e",
+            "ACC": "#ffaa33",
+            "ACC2": "#ffd700",
+            "GREEN": "#a8ff3e",
+            "GREEN_D": "#509920",
+            "RED": "#ff3838",
+            "MUTED_C": "#ff4466",
+            "TEXT": "#dcfc9f",
+            "TEXT_DIM": "#588554",
+            "TEXT_MED": "#9de37d",
+            "TEXT_BRIGHT": "#ffffff",
+            "WHITE": "#f6ffea",
+            "DARK": "#030804",
+            "BAR_BG": "#0c1d0f",
+        },
+    },
+}
+
+_ACTIVE_THEME_ID = "dossier"
+
+
 class C:
-    BG          = "#02070f"       # Deepest obsidian cyber abyss
-    PANEL       = "#03111f"       # Translucent frosted glass panel
-    PANEL2      = "#05182b"       # Secondary elevated cyber glass layer
-    PANEL_BG    = "rgba(3, 17, 31, 0.94)"  # Translucent frosted glass container backplate
-    BORDER      = "#0e344d"       # Precision cyber line border
-    BORDER_B    = "#1b5e85"       # Bright neon border highlight
-    BORDER_A    = "#134668"       # Subtle panel frame line
-    PRI         = "#00f0ff"       # Quantum Arc-Cyan / Stark Energy Blue
-    PRI_DIM     = "#0090a8"       # Deep holographic cyan
-    PRI_GHO     = "#002235"       # Ghost neon glow backdrop
-    ACC         = "#ff7300"       # Plasma reactor orange
-    ACC2        = "#ffb700"       # Tactical telemetry amber
-    GREEN       = "#00ff9d"       # Laser matrix emerald
-    GREEN_D     = "#00b368"       # Bio-matrix dark green
-    RED         = "#ff2a55"       # Threat matrix red
-    MUTED_C     = "#ff3366"       # Offline / mute neon crimson
-    TEXT        = "#d6f7ff"       # High-readability luminescent cyan-white
-    TEXT_DIM    = "#41879c"       # Muted telemetry readout
-    TEXT_MED    = "#70cce0"       # Medium high-tech readout
-    TEXT_BRIGHT = "#ffffff"       # Pure crisp laser white highlight
-    WHITE       = "#f2fcff"       # Pure laser white
-    DARK        = "#010a14"       # Deep frame backing
-    BAR_BG      = "#031626"       # Telemetry bar channel backplate
+    # Default initial state matches DOSSIER CRT [A-34]
+    BG          = "#090a12"       # Deep CRT obsidian backing
+    PANEL       = "#0d0f1e"       # CRT phosphor glass panel
+    PANEL2      = "#121528"       # Elevated tactical module layer
+    PANEL_BG    = "rgba(13, 15, 30, 0.96)"
+    BORDER      = "#222748"       # Precision CRT frame line
+    BORDER_B    = "#505bb5"       # Bright glowing phosphorescent border
+    BORDER_A    = "#343a6b"       # Subtle division grid rule
+    PRI         = "#8e9bff"       # Electric CRT Phosphor Lavender / Indigo
+    PRI_DIM     = "#5463cc"       # Medium phosphor bloom
+    PRI_GHO     = "#1a1d36"       # Phosphor ghost backdrop glow
+    ACC         = "#ff7390"       # Tactical dossier alert red
+    ACC2        = "#ffd166"       # Telemetry warning amber
+    GREEN       = "#4ef2bb"       # Phosphor matrix emerald
+    GREEN_D     = "#228562"       # Muted green bio-metric
+    RED         = "#ff2a55"       # Threat assessment crimson
+    MUTED_C     = "#ff3366"       # Silence protocol neon
+    TEXT        = "#e8ecff"       # Crisp luminescent CRT white-blue
+    TEXT_DIM    = "#707ab0"       # Muted terminal readout
+    TEXT_MED    = "#a6b2f0"       # Medium high-tech CRT readout
+    TEXT_BRIGHT = "#ffffff"       # Pure laser highlight
+    WHITE       = "#f4f6ff"       # Clean CRT white
+    DARK        = "#05060a"       # Deep shadow floor
+    BAR_BG      = "#101222"       # Metric meter channel track
 
 
-# Modern Futuristic Typography System (Stark Industries / Batcave assistant)
-# Modern clean minimalist geometric sans-serif (iOS SF Pro / Segoe UI Variable / Inter)
+# Monospaced Retro-Futuristic Terminal Typography (OCR / CRT Matrix / Cascadia)
 _TECH_FONT_FAMILIES = (
-    "SF Pro Display", "SF Pro Text", "-apple-system", "BlinkMacSystemFont",
-    "Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI",
-    "Inter", "Helvetica Neue", "Arial"
+    "Cascadia Code", "SF Mono", "Consolas", "JetBrains Mono",
+    "Fira Code", "Courier New", "monospace"
 )
 _MONO_FONT_FAMILIES = (
-    "SF Mono", "Cascadia Code", "Consolas", "JetBrains Mono", "Fira Code", "monospace"
+    "Cascadia Code", "SF Mono", "Consolas", "Courier New", "monospace"
 )
 
 
@@ -120,9 +184,8 @@ def tech_font(size: int, weight: QFont.Weight = QFont.Weight.Normal, letter_spac
     f.setFamilies(list(_TECH_FONT_FAMILIES))
     f.setPointSize(size)
     f.setWeight(weight)
-    f.setStyleHint(QFont.StyleHint.SansSerif)
+    f.setStyleHint(QFont.StyleHint.Monospace)
     if letter_spacing is not None:
-        # Normalize legacy integer tracking (e.g. 50 -> 1.0px, 30 -> 0.6px) vs explicit pixel values (0.5px - 2.0px)
         spacing = letter_spacing / 50.0 if letter_spacing > 5.0 else letter_spacing
         f.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, spacing)
     return f
@@ -140,24 +203,22 @@ def mono_font(size: int, weight: QFont.Weight = QFont.Weight.Normal, letter_spac
     return f
 
 
-# Keys tied to the accent colour — status colours (ACC, GREEN, RED…) stay fixed
 _HUE_LINKED = (
     "BG", "PANEL", "PANEL2", "BORDER", "BORDER_B", "BORDER_A",
     "PRI", "PRI_DIM", "PRI_GHO", "TEXT", "TEXT_DIM", "TEXT_MED", "TEXT_BRIGHT",
-    "WHITE", "DARK", "BAR_BG",
+    "WHITE", "DARK", "BAR_BG", "ACC", "ACC2", "GREEN", "GREEN_D", "RED", "MUTED_C",
 )
 _PALETTE_DEFAULTS: dict[str, str] = {k: getattr(C, k) for k in _HUE_LINKED}
 
-DEFAULT_UI_COLOR = _PALETTE_DEFAULTS["PRI"]
+DEFAULT_UI_COLOR = "#8e9bff"
 
 
 def apply_ui_accent(accent_hex: str) -> bool:
     """
-    Re-derives the whole teal-family palette from the chosen accent colour
-    (hue shift — brightness/saturation ratios are preserved, design stays intact).
-    Painted elements (HUD, waveform, metrics) pick up the new colour on the next
-    frame; stylesheet-based panels pick it up when they are rebuilt.
+    Applies either DOSSIER CRT [A-34] (#8e9bff) or VECTOR CRT [WAKU] (#a8ff3e),
+    or maps custom hex codes smoothly while preserving authentic CRT characteristics.
     """
+    global _ACTIVE_THEME_ID
     import colorsys
 
     accent_hex = (accent_hex or "").strip().lower()
@@ -168,18 +229,36 @@ def apply_ui_accent(accent_hex: str) -> bool:
     except ValueError:
         return False
 
+    # Check exact CRT theme matches
+    if accent_hex in ("#8e9bff", "#7b8cff", "#94a3ff", "#a4b3ff", "#7e8eff"):
+        _ACTIVE_THEME_ID = "dossier"
+        for k, v in CRT_THEMES["dossier"]["colors"].items():
+            if hasattr(C, k):
+                setattr(C, k, v)
+        return True
+    elif accent_hex in ("#a8ff3e", "#88ff28", "#b8ff38", "#00ff9d", "#6ef020"):
+        _ACTIVE_THEME_ID = "vector"
+        for k, v in CRT_THEMES["vector"]["colors"].items():
+            if hasattr(C, k):
+                setattr(C, k, v)
+        return True
+
+    # Fallback hue shift
     def _hsv(h: str) -> tuple[float, float, float]:
         r = int(h[1:3], 16) / 255
         g = int(h[3:5], 16) / 255
         b = int(h[5:7], 16) / 255
         return colorsys.rgb_to_hsv(r, g, b)
 
-    base_h            = _hsv(_PALETTE_DEFAULTS["PRI"])[0]
+    base_h = _hsv(DEFAULT_UI_COLOR)[0]
     acc_h, acc_s, _av = _hsv(accent_hex)
     dh   = acc_h - base_h
-    grey = acc_s < 0.08   # near-grey accent → the whole theme is desaturated
+    grey = acc_s < 0.08
 
-    for key, hex0 in _PALETTE_DEFAULTS.items():
+    # Determine base template (vector if green-ish, else dossier)
+    tmpl = CRT_THEMES["vector"]["colors"] if 0.20 <= acc_h <= 0.45 else CRT_THEMES["dossier"]["colors"]
+    for key in _HUE_LINKED:
+        hex0 = tmpl.get(key, getattr(C, key))
         h, s, v = _hsv(hex0)
         if grey:
             s *= 0.15
@@ -454,9 +533,11 @@ class HudCanvas(QWidget):
         # back is instant and costs no reload.
         try:
             from memory.config_manager import get_hud_style
-            self.hud_style = get_hud_style()
+            self.hud_style = get_hud_style() or "globe"
         except Exception:
-            self.hud_style = "face"
+            self.hud_style = "globe"
+        if self.hud_style in ("face", "core", None, ""):
+            self.hud_style = "globe"
         self._core_phase = 0.0
 
         self._tick       = 0
@@ -976,11 +1057,45 @@ class HudCanvas(QWidget):
             p.drawText(QRectF(cx - inner_r, cy - fsz, inner_r * 2, fsz * 2),
                        Qt.AlignmentFlag.AlignCenter, name)
 
-    def _paint_holographic_audio_display(self, p: QPainter, cx: float, cy: float, W: float, H: float):
+    def _paint_crt_grid(self, p: QPainter, W: float, H: float):
+        """Draw subtle background CRT coordinate grid with + crosshairs (Screenshot 2)."""
+        main, _ = self._core_colours()
+        bg = qcol(C.BG)
+
+        def blend(col: QColor, a: float) -> QColor:
+            k = max(0.0, min(1.0, a))
+            return QColor(int(bg.red()   + (col.red()   - bg.red())   * k),
+                          int(bg.green() + (col.green() - bg.green()) * k),
+                          int(bg.blue()  + (col.blue()  - bg.blue())  * k))
+
+        step = 44
+        p.setPen(QPen(blend(main, 0.07), 1))
+        for x in range(0, int(W) + step, step):
+            p.drawLine(x, 0, x, int(H))
+        for y in range(0, int(H) + step, step):
+            p.drawLine(0, y, int(W), y)
+
+        # Crosshairs at intersections
+        p.setPen(QPen(blend(main, 0.18), 1))
+        crosshairs = []
+        for x in range(0, int(W) + step, step):
+            for y in range(0, int(H) + step, step):
+                crosshairs.append(QLineF(x - 3, y, x + 3, y))
+                crosshairs.append(QLineF(x, y - 3, x, y + 3))
+        p.drawLines(crosshairs)
+
+    def _paint_3d_vector_globe(self, p: QPainter, cx: float, cy: float, r: float, W: float, H: float):
         """
-        Futuristic Quantum Holographic Audio Oscilloscope & Kinetic Voice Visualizer.
-        Features multi-harmonic spline ribbons, audio-reactive photon crests,
-        central quantum vocal focal emitter, dynamic dB & frequency telemetry.
+        3D Rotating Vector Wireframe Globe (Matching Screenshot 2: WAKU CRT Globe).
+        Features:
+          - Real-time 3D coordinate projection with continuous yaw rotation and pitch tilt.
+          - 7 Latitude parallel rings (Equator dashed DashLine as in Screenshot 2).
+          - 12 Longitude meridians rotating smoothly around the sphere.
+          - Depth-based illumination (bright front side with glow, attenuated back side).
+          - Tilted Orbital Satellite Ring (35 deg tilt) with 4 numbered satellite nodes
+            ('24', '25', '34', '09') and radial connection tethers.
+          - 8 Polar radiating coordinate rays with calibration tick marks.
+          - Outer horizon boundary circle with glowing specular rim.
         """
         amp = self._amp_disp
         live = (self.speaking or amp > 0.03) and not self.muted
@@ -993,71 +1108,205 @@ class HudCanvas(QWidget):
                           int(bg.green() + (col.green() - bg.green()) * k),
                           int(bg.blue()  + (col.blue()  - bg.blue())  * k))
 
-        vw = min(W - 40, 520.0)
+        t = self._core_phase
+        yaw = (t * 0.85) % (math.pi * 2)
+        pitch = math.radians(22.0)  # Axial tilt
+
+        cos_p, sin_p = math.cos(pitch), math.sin(pitch)
+        cos_y, sin_y = math.cos(yaw), math.sin(yaw)
+
+        def project(lat_rad: float, lon_rad: float) -> tuple[float, float, float]:
+            clat = math.cos(lat_rad)
+            slat = math.sin(lat_rad)
+            clon = math.cos(lon_rad)
+            slon = math.sin(lon_rad)
+
+            x0 = r * clat * slon
+            y0 = -r * slat
+            z0 = r * clat * clon
+
+            # Rotate yaw around Y
+            x1 = x0 * cos_y + z0 * sin_y
+            y1 = y0
+            z1 = -x0 * sin_y + z0 * cos_y
+
+            # Rotate pitch around X
+            x2 = x1
+            y2 = y1 * cos_p - z1 * sin_p
+            z2 = y1 * sin_p + z1 * cos_p
+
+            return (cx + x2, cy + y2, z2)
+
+        p.setBrush(Qt.BrushStyle.NoBrush)
+
+        # ── 1. Outer Horizon Circle ──────────────────────────────────────────
+        p.setPen(QPen(blend(main, 0.38 + 0.28 * amp), 2.2))
+        p.drawEllipse(QRectF(cx - r, cy - r, r * 2, r * 2))
+        p.setPen(QPen(blend(main, 0.88), 1.2))
+        p.drawEllipse(QRectF(cx - r, cy - r, r * 2, r * 2))
+
+        # ── 2. Latitude Parallel Rings ───────────────────────────────────────
+        lat_angles = [-60, -40, -20, 0, 20, 40, 60]
+        for deg in lat_angles:
+            is_equator = (deg == 0)
+            lat_r = math.radians(deg)
+            n_samples = 64
+            pts = [project(lat_r, math.radians(k * (360.0 / n_samples))) for k in range(n_samples + 1)]
+
+            for k in range(n_samples):
+                p1, p2 = pts[k], pts[k + 1]
+                mid_z = (p1[2] + p2[2]) / 2.0
+                if mid_z >= 0:
+                    pen_col = blend(main, 0.70 + 0.30 * amp)
+                    pen_w = 1.4 if is_equator else 1.1
+                    p.setPen(QPen(pen_col, pen_w, Qt.PenStyle.DashLine if is_equator else Qt.PenStyle.SolidLine))
+                else:
+                    pen_col = blend(main, 0.15)
+                    p.setPen(QPen(pen_col, 0.9, Qt.PenStyle.DotLine if is_equator else Qt.PenStyle.SolidLine))
+                p.drawLine(QLineF(p1[0], p1[1], p2[0], p2[1]))
+
+        # ── 3. Longitude Meridians (Rotating smoothly) ───────────────────────
+        n_meridians = 12
+        for m in range(n_meridians):
+            base_lon = math.radians(m * (360.0 / n_meridians))
+            n_samples = 48
+            pts = []
+            for k in range(n_samples + 1):
+                lat = math.radians(-85.0 + k * (170.0 / n_samples))
+                pts.append(project(lat, base_lon))
+
+            for k in range(n_samples):
+                p1, p2 = pts[k], pts[k + 1]
+                mid_z = (p1[2] + p2[2]) / 2.0
+                if mid_z >= 0:
+                    p.setPen(QPen(blend(main, 0.65 + 0.30 * amp), 1.2))
+                else:
+                    p.setPen(QPen(blend(main, 0.12), 0.8))
+                p.drawLine(QLineF(p1[0], p1[1], p2[0], p2[1]))
+
+        # ── 4. Tilted Orbital Satellite Node Ring (Screenshot 2 Feature!) ────
+        orb_r = r * 1.15
+        orb_tilt = math.radians(35.0)
+        cos_ot, sin_ot = math.cos(orb_tilt), math.sin(orb_tilt)
+
+        def project_orbit(ang: float) -> tuple[float, float, float]:
+            ox0 = orb_r * math.cos(ang)
+            oy0 = 0.0
+            oz0 = orb_r * math.sin(ang)
+
+            # Tilted orbit around X
+            ox1 = ox0
+            oy1 = oy0 * cos_ot - oz0 * sin_ot
+            oz1 = oy0 * sin_ot + oz0 * cos_ot
+
+            # Apply sphere pitch
+            ox2 = ox1
+            oy2 = oy1 * cos_p - oz1 * sin_p
+            oz2 = oy1 * sin_p + oz1 * cos_p
+
+            return (cx + ox2, cy + oy2, oz2)
+
+        # Draw orbital ring track
+        n_orb_pts = 64
+        orb_pts = [project_orbit(math.radians(k * (360.0 / n_orb_pts))) for k in range(n_orb_pts + 1)]
+        for k in range(n_orb_pts):
+            p1, p2 = orb_pts[k], orb_pts[k + 1]
+            mid_z = (p1[2] + p2[2]) / 2.0
+            p.setPen(QPen(blend(main, 0.45 if mid_z >= 0 else 0.14), 1.0, Qt.PenStyle.DashLine))
+            p.drawLine(QLineF(p1[0], p1[1], p2[0], p2[1]))
+
+        # Satellite numbered node markers ('24', '25', '34', '09')
+        sat_data = [
+            ("25", 0.0),
+            ("34", math.pi * 0.55),
+            ("24", math.pi * 1.15),
+            ("09", math.pi * 1.70),
+        ]
+        sat_font = mono_font(6, QFont.Weight.Bold)
+        p.setFont(sat_font)
+
+        for sat_id, sat_offset in sat_data:
+            node_ang = (t * 0.65 + sat_offset) % (math.pi * 2)
+            nx, ny, nz = project_orbit(node_ang)
+            if nz >= -r * 0.4:
+                p.setPen(QPen(blend(main, 0.28), 1, Qt.PenStyle.DotLine))
+                p.drawLine(QLineF(nx, ny, cx, cy))
+
+                node_r = 7.5
+                p.setBrush(QBrush(blend(bg, 0.92)))
+                p.setPen(QPen(blend(acc if live else main, 0.95), 1.4))
+                p.drawEllipse(QRectF(nx - node_r, ny - node_r, node_r * 2, node_r * 2))
+
+                p.setPen(QPen(blend(qcol(C.WHITE), 0.95), 1))
+                p.drawText(QRectF(nx - node_r, ny - node_r, node_r * 2, node_r * 2),
+                           Qt.AlignmentFlag.AlignCenter, sat_id)
+                p.setBrush(Qt.BrushStyle.NoBrush)
+
+        # ── 5. Polar Radiating Coordinate Rays (Screenshot 2 Feature!) ───────
+        px_north, py_north, _ = project(math.radians(90.0), 0.0)
+        p.setPen(QPen(blend(main, 0.45), 1.0, Qt.PenStyle.DashLine))
+        for i in range(8):
+            ray_ang = math.radians(i * 45.0 + t * 4.0)
+            rx = px_north + math.cos(ray_ang) * 26.0
+            ry = py_north + math.sin(ray_ang) * 18.0
+            p.drawLine(QLineF(px_north, py_north, rx, ry))
+
+    def _paint_globe_waveforms(self, p: QPainter, cx: float, cy: float, W: float, H: float):
+        """Futuristic Oscilloscope Waveforms spanning across the globe (Screenshot 1 & 2 synthesis)."""
+        amp = self._amp_disp
+        live = (self.speaking or amp > 0.03) and not self.muted
+        main, acc = self._core_colours()
+        bg = qcol(C.BG)
+
+        def blend(col: QColor, a: float) -> QColor:
+            k = max(0.0, min(1.0, a))
+            return QColor(int(bg.red()   + (col.red()   - bg.red())   * k),
+                          int(bg.green() + (col.green() - bg.green()) * k),
+                          int(bg.blue()  + (col.blue()  - bg.blue())  * k))
+
+        vw = min(W - 40, 560.0)
         vx0 = cx - vw / 2.0
         vx1 = cx + vw / 2.0
         t = self._tick * 0.08
 
-        # ── 1. Stealth Mode Flatline if muted ────────────────────────────────
-        if self.muted:
-            p.setPen(QPen(blend(qcol(C.MUTED_C), 0.35), 1.0, Qt.PenStyle.DashLine))
-            p.drawLine(QLineF(vx0, cy, vx1, cy))
-            p.setPen(QPen(blend(qcol(C.MUTED_C), 0.85), 1.5))
-            p.drawLine(QLineF(cx - 70, cy, cx + 70, cy))
-            f_stealth = tech_font(7, QFont.Weight.Bold, letter_spacing=1.2)
-            p.setFont(f_stealth)
-            p.setPen(QPen(blend(qcol(C.MUTED_C), 0.70), 1))
-            p.drawText(QRectF(cx - 160, cy + 6, 320, 14), Qt.AlignmentFlag.AlignCenter,
-                       "⊘  SILENCE PROTOCOL ENGAGED // ACOUSTICS OFFLINE")
-            return
-
-        # ── 2. Telemetry and Calibration Markers ─────────────────────────────
-        f_hud = tech_font(7, QFont.Weight.DemiBold, letter_spacing=0.8)
-        p.setFont(f_hud)
-        p.setPen(QPen(blend(main, 0.45), 1))
-        # Left telemetry
-        p.drawText(QRectF(vx0, cy - 20, 150, 12), Qt.AlignmentFlag.AlignLeft,
-                   f"FREQ // {1.8 + amp * 1.6:.2f} kHz")
-        p.drawText(QRectF(vx0, cy + 12, 150, 12), Qt.AlignmentFlag.AlignLeft,
-                   f"FLUX // {98.2 + amp * 1.6:.1f}%")
-        # Right telemetry
-        p.drawText(QRectF(vx1 - 150, cy - 20, 150, 12), Qt.AlignmentFlag.AlignRight,
-                   "MOD // DYNAMIC" if live else "MOD // IDLE")
-        p.drawText(QRectF(vx1 - 150, cy + 12, 150, 12), Qt.AlignmentFlag.AlignRight,
-                   f"LEVEL // {-24.0 + amp * 23.5:.1f} dB")
-
-        # Baseline subtle guideline with calibration notches
-        p.setPen(QPen(blend(main, 0.16), 1))
+        # Guideline with calibration tick marks
+        p.setPen(QPen(blend(main, 0.22), 1))
         p.drawLine(QLineF(vx0, cy, vx1, cy))
         ticks = []
-        for step in range(0, int(vw), 24):
+        for step in range(0, int(vw), 20):
             tx = vx0 + step
-            ticks.append(QLineF(tx, cy - 2, tx, cy + 2))
-        p.setPen(QPen(blend(main, 0.22), 1))
+            ticks.append(QLineF(tx, cy - 3, tx, cy + 3))
+        p.setPen(QPen(blend(main, 0.35), 1))
         p.drawLines(ticks)
 
-        # ── 3. Multi-Harmonic Spline Audio Waveforms ─────────────────────────
+        # Telemetry Labels above the baseline
+        f_tele = mono_font(7, QFont.Weight.Bold)
+        p.setFont(f_tele)
+        p.setPen(QPen(blend(main, 0.70), 1))
+        p.drawText(QRectF(vx0, cy - 18, 160, 14), Qt.AlignmentFlag.AlignLeft,
+                   f"FREQ // {142.8 + amp * 12.4:.1f} MHz")
+        p.drawText(QRectF(vx1 - 160, cy - 18, 160, 14), Qt.AlignmentFlag.AlignRight,
+                   f"LEVEL // {-28.0 + amp * 26.5:.1f} dB")
+
+        # Multi-harmonic spline points
         n_pts = 64
-        h_max = 4.0 + amp * 28.0 + (1.5 * math.sin(t * 1.5))
+        h_max = 5.0 + amp * 38.0 + (2.0 * math.sin(t * 1.6))
         pts_wave1 = []
         pts_wave2 = []
 
         for i in range(n_pts + 1):
-            norm = i / float(n_pts)   # 0.0 to 1.0
+            norm = i / float(n_pts)
             x = vx0 + norm * vw
-            # Gaussian bell curve envelope to pinch edges cleanly to baseline
-            bell = math.sin(norm * math.pi) ** 1.3
-            # Primary harmonic
-            w1 = math.sin(norm * 14.0 - t * 2.2) * 0.65 + math.cos(norm * 7.0 + t * 1.4) * 0.35
+            bell = math.sin(norm * math.pi) ** 1.35
+            w1 = math.sin(norm * 14.0 - t * 2.4) * 0.65 + math.cos(norm * 7.0 + t * 1.5) * 0.35
             y1 = cy - bell * w1 * h_max
             pts_wave1.append(QPointF(x, y1))
 
-            # Counter-harmonic
-            w2 = math.cos(norm * 16.0 + t * 2.5) * 0.55 + math.sin(norm * 9.0 - t * 1.6) * 0.45
+            w2 = math.cos(norm * 16.0 + t * 2.7) * 0.55 + math.sin(norm * 9.0 - t * 1.8) * 0.45
             y2 = cy + bell * w2 * (h_max * 0.75)
             pts_wave2.append(QPointF(x, y2))
 
-        # ── 4. Glowing Audio Ribbon Fill ─────────────────────────────────────
+        # Audio ribbon glow fill
         poly = QPainterPath()
         poly.moveTo(pts_wave1[0])
         for pt in pts_wave1[1:]:
@@ -1067,53 +1316,136 @@ class HudCanvas(QWidget):
         poly.closeSubpath()
 
         fill_grad = QLinearGradient(0, cy - h_max, 0, cy + h_max)
-        fill_grad.setColorAt(0.0, blend(main, min(0.35, 0.06 + amp * 0.40)))
-        fill_grad.setColorAt(0.5, blend(main, min(0.18, 0.02 + amp * 0.20)))
-        fill_grad.setColorAt(1.0, blend(acc,  min(0.30, 0.04 + amp * 0.35)))
+        fill_grad.setColorAt(0.0, blend(main, min(0.38, 0.08 + amp * 0.45)))
+        fill_grad.setColorAt(0.5, blend(main, min(0.18, 0.03 + amp * 0.22)))
+        fill_grad.setColorAt(1.0, blend(acc,  min(0.32, 0.05 + amp * 0.38)))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QBrush(fill_grad))
         p.drawPath(poly)
         p.setBrush(Qt.BrushStyle.NoBrush)
 
-        # ── 5. Neon Laser Wave Splines ───────────────────────────────────────
-        # Spline 2 (Counter wave, secondary accent)
+        # Counter wave spline
         path2 = QPainterPath()
         path2.moveTo(pts_wave2[0])
         for pt in pts_wave2[1:]:
             path2.lineTo(pt)
-        p.setPen(QPen(blend(acc, 0.55 + amp * 0.40), 1.3))
+        p.setPen(QPen(blend(acc, 0.60 + amp * 0.40), 1.3))
         p.drawPath(path2)
 
-        # Spline 1 (Primary wave, bright laser cyan with white core)
+        # Primary wave spline
         path1 = QPainterPath()
         path1.moveTo(pts_wave1[0])
         for pt in pts_wave1[1:]:
             path1.lineTo(pt)
-        p.setPen(QPen(blend(main, 0.40), 3.2))   # glow bloom
+        p.setPen(QPen(blend(main, 0.45), 3.4))  # bloom
         p.drawPath(path1)
-        p.setPen(QPen(blend(qcol(C.WHITE) if live else main, 0.90), 1.6))
+        p.setPen(QPen(blend(qcol(C.WHITE) if live else main, 0.95), 1.6))
         p.drawPath(path1)
 
-        # ── 6. Audio Photon Nodes on Wave Peaks ──────────────────────────────
+        # Photon nodes on peaks
         p.setPen(Qt.PenStyle.NoPen)
-        for k in (12, 22, 32, 42, 52):
+        for k in (10, 21, 32, 43, 54):
             if k < len(pts_wave1):
                 pt = pts_wave1[k]
                 p.setBrush(QBrush(blend(qcol(C.WHITE), 0.95)))
-                p.drawEllipse(pt, 2.0, 2.0)
-                p.setBrush(QBrush(blend(main, 0.30 + 0.50 * amp)))
-                p.drawEllipse(pt, 4.5, 4.5)
+                p.drawEllipse(pt, 2.2, 2.2)
+                p.setBrush(QBrush(blend(main, 0.40 + 0.50 * amp)))
+                p.drawEllipse(pt, 5.0, 5.0)
+        p.setBrush(Qt.BrushStyle.NoBrush)
 
-        # ── 7. Central Quantum Vocal Emitter Reticle ─────────────────────────
-        core_r = 6.0 + amp * 14.0
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        p.setPen(QPen(blend(acc if live else main, 0.40 + 0.50 * amp), 1.2))
-        p.drawEllipse(QRectF(cx - core_r, cy - core_r, core_r * 2, core_r * 2))
-        # Inner focal bead
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QBrush(blend(qcol(C.WHITE), 0.95)))
-        p.drawEllipse(QPointF(cx, cy), 2.2, 2.2)
-        p.setBrush(Qt.BrushStyle.NoBrush)
+    def _paint_hex_matrix_stream(self, p: QPainter, cx: float, cy: float, W: float, H: float):
+        """Live cycling Hexadecimal & Telemetry stream (directly from Screenshot 1)."""
+        main, _ = self._core_colours()
+        bg = qcol(C.BG)
+
+        def blend(col: QColor, a: float) -> QColor:
+            k = max(0.0, min(1.0, a))
+            return QColor(int(bg.red()   + (col.red()   - bg.red())   * k),
+                          int(bg.green() + (col.green() - bg.green()) * k),
+                          int(bg.blue()  + (col.blue()  - bg.blue())  * k))
+
+        vw = min(W - 40, 540.0)
+        vx0 = cx - vw / 2.0
+        p.setFont(mono_font(6, QFont.Weight.Medium))
+        p.setPen(QPen(blend(main, 0.48), 1))
+
+        shift = (self._tick // 18) % 10
+        r1 = f"49 08 89044 78 03877 00  23414 43 46291 {0x2A + shift:02X}  33418 90 10244"
+        r2 = f"01 03 05689 27 30001 70  34107 10120 40 75111 {0x81 - shift:02X}  12904 55 98120"
+        r3 = f"10 34 33913 79 00161 57  88911 00080 55 78972 {0x4F + shift:02X}  89765 12 40019"
+
+        p.drawText(QRectF(vx0, cy, vw, 11), Qt.AlignmentFlag.AlignCenter, r1)
+        p.drawText(QRectF(vx0, cy + 12, vw, 11), Qt.AlignmentFlag.AlignCenter, r2)
+        p.drawText(QRectF(vx0, cy + 24, vw, 11), Qt.AlignmentFlag.AlignCenter, r3)
+
+    def _paint_status_highlight_banner(self, p: QPainter, cx: float, cy: float, W: float, H: float):
+        """High-Impact Inverted Phosphor Status Banner (Screenshot 2: 'PROTECTING YOUR PRIVACY IS WAKU'S GOAL')."""
+        main, acc = self._core_colours()
+        bg = qcol(C.BG)
+
+        if self.muted:
+            txt = "⊘  SILENCE PROTOCOL ENGAGED // ACOUSTICS MUTED"
+            bar_col = qcol(C.MUTED_C)
+        elif self.speaking:
+            txt = "●  VOCAL SYNTHESIS ACTIVE // ALFRED MK-II"
+            bar_col = main
+        elif self.state == "THINKING":
+            txt = "◈  NEURAL INFERENCE ACTIVE // PROCESSING DIRECTIVE"
+            bar_col = acc
+        elif self.state == "LISTENING":
+            txt = "●  LISTENING ACTIVE // DIRECTIVE READY"
+            bar_col = main
+        else:
+            txt = "PROTECTING YOUR PRIVACY IS ALFRED'S DIRECTIVE."
+            bar_col = main
+
+        bw = min(W - 48, 540.0)
+        bx = cx - bw / 2.0
+        by = cy
+        bh = 22.0
+
+        p.fillRect(QRectF(bx, by, bw, bh), bar_col)
+        p.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=1.0))
+        p.setPen(QPen(bg, 1))
+        p.drawText(QRectF(bx, by, bw, bh), Qt.AlignmentFlag.AlignCenter, txt)
+
+    def _paint_crt_scanlines_and_reticles(self, p: QPainter, W: float, H: float):
+        """Authentic CRT Scanlines, Corner Brackets, and Viewport Telemetry."""
+        main, _ = self._core_colours()
+        arm = 14.0
+        m = 10.0
+        p.setPen(QPen(main, 1.6))
+        # Top-Left
+        p.drawLine(QLineF(m, m, m + arm, m))
+        p.drawLine(QLineF(m, m, m, m + arm))
+        # Top-Right
+        p.drawLine(QLineF(W - m, m, W - m - arm, m))
+        p.drawLine(QLineF(W - m, m, W - m, m + arm))
+        # Bottom-Left
+        p.drawLine(QLineF(m, H - m, m + arm, H - m))
+        p.drawLine(QLineF(m, H - m, m, H - m - arm))
+        # Bottom-Right
+        p.drawLine(QLineF(W - m, H - m, W - m - arm, H - m))
+        p.drawLine(QLineF(W - m, H - m, W - m, H - m - arm))
+
+        # Viewport micro telemetry
+        f_badge = mono_font(6, QFont.Weight.Bold)
+        p.setFont(f_badge)
+        p.setPen(QPen(QColor(main.red(), main.green(), main.blue(), 160), 1))
+        p.drawText(QRectF(m + 4, m + 2, 180, 12), Qt.AlignmentFlag.AlignLeft, "SUBJECT ALFRED.MK-II // VECTOR HUD")
+        p.drawText(QRectF(W - m - 184, m + 2, 180, 12), Qt.AlignmentFlag.AlignRight, "ORBITAL MATRIX: 4 ACTIVE")
+        p.drawText(QRectF(m + 4, H - m - 14, 180, 12), Qt.AlignmentFlag.AlignLeft, "COORDS: 42°19'N 71°05'W")
+        p.drawText(QRectF(W - m - 184, H - m - 14, 180, 12), Qt.AlignmentFlag.AlignRight, "WAYNE TECH PROTOCOL LIV")
+
+        # Subtle CRT scanlines every 3px
+        scan_col = QColor(main.red(), main.green(), main.blue(), 12)
+        p.setPen(QPen(scan_col, 1))
+        scan_lines = [QLineF(0, y, W, y) for y in range(0, int(H), 3)]
+        p.drawLines(scan_lines)
+
+    def _paint_holographic_audio_display(self, p: QPainter, cx: float, cy: float, W: float, H: float):
+        """Secondary audio display fallback if needed."""
+        self._paint_globe_waveforms(p, cx, cy, W, H)
 
     def _draw_custom_emblem(self, p: QPainter, cx: float, cy: float, max_w: float, max_h: float) -> bool:
         """If a custom emblem/logo file exists in config/, draw it with smooth holographic styling."""
@@ -1130,7 +1462,7 @@ class HudCanvas(QWidget):
                         if nw > 0 and nh > 0:
                             scaled = pm.scaled(nw, nh, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                             p.save()
-                            p.setOpacity(0.40 + 0.12 * math.sin(self._tick * 0.05))
+                            p.setOpacity(0.35 + 0.10 * math.sin(self._tick * 0.05))
                             p.drawPixmap(int(cx - nw / 2), int(cy - nh / 2), scaled)
                             p.restore()
                             return True
@@ -1141,7 +1473,7 @@ class HudCanvas(QWidget):
 
     def paintEvent(self, _):
         p = QPainter(self)
-        if not p.isActive():      # device not ready (e.g. 0-size during layout) — skip cleanly
+        if not p.isActive():
             return
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.fillRect(self.rect(), qcol(C.BG))
@@ -1159,15 +1491,10 @@ class HudCanvas(QWidget):
                           int(bg.green() + (col.green() - bg.green()) * k),
                           int(bg.blue()  + (col.blue()  - bg.blue())  * k))
 
-        # grid dots — blitted from a cached layer; rebuilt only when the size
-        # or the theme's ghost colour changes (so live re-theming still works).
-        _gkey = (W, H, C.PRI_GHO)
-        if self._grid_cache is None or self._grid_key != _gkey:
-            self._grid_cache = self._make_grid(W, H)
-            self._grid_key   = _gkey
-        p.drawPixmap(0, 0, self._grid_cache)
+        # 1. Subtle CRT coordinate background grid with crosshairs (Screenshot 2)
+        self._paint_crt_grid(p, W, H)
 
-        # ── Dynamic Cyber-Particle Grid & Constellation Links (Moving Pixels) ──
+        # 2. Dynamic particles & constellation links
         p.setPen(Qt.PenStyle.NoPen)
         pts_coords = []
         for pt in self._particles:
@@ -1175,94 +1502,380 @@ class HudCanvas(QWidget):
             py = pt['y'] * H
             pts_coords.append((px, py))
             pulse = 0.6 + 0.4 * math.sin(pt['phase'] + self._tick * 0.05)
-            a = min(255, max(0, int(pt['alpha'] * pulse * 180)))
+            a = min(255, max(0, int(pt['alpha'] * pulse * 140)))
             p.setBrush(QBrush(blend(main, a / 255.0)))
             sz = pt['size'] * (1.0 + 0.3 * amp)
             p.drawEllipse(QPointF(px, py), sz, sz)
 
-        # Micro-constellation links between nearby particles
+        # Micro links
         p.setBrush(Qt.BrushStyle.NoBrush)
         for i in range(len(pts_coords)):
             px1, py1 = pts_coords[i]
-            for j in range(i + 1, min(i + 5, len(pts_coords))):
+            for j in range(i + 1, min(i + 4, len(pts_coords))):
                 px2, py2 = pts_coords[j]
-                dx, dy = px1 - px2, py1 - py2
-                d2 = dx * dx + dy * dy
-                if d2 < 3600:  # ~60px
+                d2 = (px1 - px2)**2 + (py1 - py2)**2
+                if d2 < 3600:
                     dist = math.sqrt(d2)
-                    link_a = max(0.0, (1.0 - dist / 60.0) * 0.20)
-                    p.setPen(QPen(blend(main, link_a), 1))
+                    p.setPen(QPen(blend(main, (1.0 - dist / 60.0) * 0.15), 1))
                     p.drawLine(QLineF(px1, py1, px2, py2))
 
-        # ── Holographic Scanline Sweep ───────────────────────────────────────
-        scan_y = self._scanline_y * H
-        scan_grad = QLinearGradient(0, scan_y - 25, 0, scan_y + 25)
-        scan_grad.setColorAt(0.0, QColor(0, 240, 255, 0))
-        scan_grad.setColorAt(0.5, blend(main, 0.12 + 0.10 * amp))
-        scan_grad.setColorAt(1.0, QColor(0, 240, 255, 0))
-        p.fillRect(QRectF(0, scan_y - 25, W, 50), QBrush(scan_grad))
-        p.setPen(QPen(blend(main, 0.24 + 0.20 * amp), 1.0))
-        p.drawLine(QLineF(0, scan_y, W, scan_y))
+        # 3. Optional custom watermark emblem
+        self._draw_custom_emblem(p, cx, cy * 0.65, fw * 0.42, fw * 0.42)
 
-        # ── optional custom ambient emblem / watermark from config/ ─────────
-        self._draw_custom_emblem(p, cx, cy * 0.82, fw * 0.50, fw * 0.50)
+        # 4. Centerpiece Rendering
+        # Globe centerpiece (Screenshot 2 + Waveforms)
+        if self.hud_style == "globe" or (self._avatar is None and self.hud_style != "core"):
+            globe_r = min(fw * 0.35, 175.0)
+            globe_cy = cy * 0.72
+            self._paint_3d_vector_globe(p, cx, globe_cy, globe_r, W, H)
+            self._paint_globe_waveforms(p, cx, globe_cy + globe_r * 0.78, W, H)
+            self._paint_hex_matrix_stream(p, cx, globe_cy + globe_r * 0.78 + 36.0, W, H)
 
-        # ── holographic head ────────────────────────────────────────────────
-        _sy_status = cy + fw * 0.40
-        if self._avatar is not None and self.hud_style == "face":
+        elif self._avatar is not None and self.hud_style == "face":
             _band_t = 12.0
-            _band_h = max(60.0, _sy_status - 12.0 - _band_t)
+            _band_h = max(60.0, cy + fw * 0.38 - _band_t)
             _r_head = min(fw * 0.355, _band_h / (self._avatar.SPAN + 0.08))
             _head_cy = _band_t + (_band_h - self._avatar.SPAN * _r_head) / 2.0 + _r_head
+            self._avatar.paint(p, cx, _head_cy, _r_head, main, acc, qcol(C.BG))
+            self._paint_globe_waveforms(p, cx, cy + fw * 0.42, W, H)
 
-            if self.muted:
-                _main = _acc = qcol(C.MUTED_C)
-            else:
-                _main = qcol(C.PRI)
-                if self.speaking:
-                    _acc = qcol(C.ACC)
-                elif self.state in ("THINKING", "PROCESSING"):
-                    _acc = qcol(C.ACC2)
-                elif self.state == "LISTENING":
-                    _acc = qcol(C.GREEN)
-                else:
-                    _acc = qcol(C.PRI)
-            self._avatar.paint(p, cx, _head_cy, _r_head, _main, _acc, qcol(C.BG))
-
-        # reactor core — the other centrepiece
         else:
             _band_t = 12.0
-            _band_h = max(60.0, _sy_status - 12.0 - _band_t)
+            _band_h = max(60.0, cy + fw * 0.38 - _band_t)
             _r = min(W * 0.46, _band_h / 2.0)
             self._paint_core(p, cx, _band_t + _band_h / 2.0, _r, W, _band_h)
+            self._paint_globe_waveforms(p, cx, cy + fw * 0.42, W, H)
 
-        # status text
-        sy = _sy_status
-        if self.muted:
-            txt, col = "⊘  SILENCE PROTOCOL ENGAGED // ACOUSTICS MUTED", qcol(C.MUTED_C)
-        elif self.speaking:
-            txt, col = "●  VOCAL TRANSMISSION ACTIVE",  qcol(C.ACC)
-        elif self.state == "THINKING":
-            sym = "◈" if self._blink else "◇"
-            txt, col = f"{sym}  NEURAL SYNTHESIS",   qcol(C.ACC2)
-        elif self.state == "PROCESSING":
-            sym = "▷" if self._blink else "▶"
-            txt, col = f"{sym}  EXECUTING DIRECTIVE", qcol(C.ACC2)
-        elif self.state == "LISTENING":
-            sym = "●" if self._blink else "○"
-            txt, col = f"{sym}  ACTIVE LISTENING MATRIX",  qcol(C.GREEN)
-        else:
-            sym = "●" if self._blink else "○"
-            txt, col = f"{sym}  SYSTEM {self.state}", qcol(C.PRI)
+        # 5. High-Impact Status Banner (Screenshot 2)
+        self._paint_status_highlight_banner(p, cx, H - 34.0, W, H)
 
-        p.setPen(QPen(col, 1))
-        p.setFont(tech_font(10, QFont.Weight.Bold, letter_spacing=1.6))
-        p.drawText(QRectF(0, sy, W, 26), Qt.AlignmentFlag.AlignCenter, txt)
-
-        # ── Futuristic Quantum Holographic Audio Oscilloscope ──────────────────
-        self._paint_holographic_audio_display(p, cx, sy + 32, W, H)
+        # 6. CRT Screen Scanlines & Corner Brackets
+        self._paint_crt_scanlines_and_reticles(p, W, H)
 
         p.end()
+
+
+# ── Tactical CRT Modules from Screenshot 1 & 2 ──────────────────────────────
+class CRTReconWidget(QWidget):
+    """
+    Halftone / CRT Dithered Optical Recon Scanner Widget (Screenshot 1: Top-Left Subject Eye).
+    Features procedural iris/retina dithering raster, scanline sweep, and CRT brackets.
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(132)
+        self._sweep_y = 0.0
+        self._tmr = QTimer(self)
+        self._tmr.timeout.connect(self._step)
+        self._tmr.start(33)
+
+    def _step(self):
+        self._sweep_y = (self._sweep_y + 0.016) % 1.0
+        if self.isVisible():
+            self.update()
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        if not p.isActive():
+            return
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        W, H = self.width(), self.height()
+        main = qcol(C.PRI)
+        bg = qcol(C.BG)
+
+        def blend(col: QColor, a: float) -> QColor:
+            k = max(0.0, min(1.0, a))
+            return QColor(int(bg.red()   + (col.red()   - bg.red())   * k),
+                          int(bg.green() + (col.green() - bg.green()) * k),
+                          int(bg.blue()  + (col.blue()  - bg.blue())  * k))
+
+        # Panel backplate
+        p.fillRect(self.rect(), qcol(C.PANEL))
+        p.setPen(QPen(blend(main, 0.45), 1))
+        p.drawRect(QRectF(1, 1, W - 2, H - 2))
+
+        # Header: ● ● ●  OPTICAL RECON
+        p.setFont(mono_font(7, QFont.Weight.Bold))
+        p.setPen(QPen(blend(main, 0.85), 1))
+        p.drawText(QRectF(8, 5, W - 16, 14), Qt.AlignmentFlag.AlignLeft, "● ● ●  RECON FEED // OPTICAL")
+
+        # Inner display box
+        bx, by, bw, bh = 8.0, 22.0, W - 16.0, H - 30.0
+        p.fillRect(QRectF(bx, by, bw, bh), blend(bg, 0.95))
+        p.setPen(QPen(blend(main, 0.35), 1))
+        p.drawRect(QRectF(bx, by, bw, bh))
+
+        # Procedural halftone dithered iris/eye
+        icx, icy = bx + bw / 2.0, by + bh / 2.0
+        ir = min(bw, bh) * 0.40
+        p.setPen(Qt.PenStyle.NoPen)
+        for rad_step in range(4, int(ir), 4):
+            pts_count = int(rad_step * 2.8)
+            for k in range(pts_count):
+                ang = k * (2.0 * math.pi / pts_count)
+                jitter = (math.sin(k * 7.1 + rad_step) + 1.0) * 0.5
+                px = icx + math.cos(ang) * (rad_step * (0.85 + 0.30 * jitter))
+                py = icy + math.sin(ang) * (rad_step * (0.55 + 0.20 * jitter))
+                if bx < px < bx + bw and by < py < by + bh:
+                    dot_a = 0.20 + 0.70 * (1.0 - rad_step / ir)
+                    p.setBrush(QBrush(blend(main, dot_a)))
+                    p.drawRect(QRectF(px - 1, py - 1, 1.8, 1.8))
+
+        # Pupil core
+        p.setBrush(QBrush(blend(qcol(C.WHITE), 0.90)))
+        p.drawEllipse(QPointF(icx, icy), 3.0, 3.0)
+
+        # Scanning sweep bar
+        sy = by + self._sweep_y * bh
+        p.setPen(QPen(blend(main, 0.85), 1.2))
+        p.drawLine(QLineF(bx, sy, bx + bw, sy))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(blend(main, 0.15)))
+        p.drawRect(QRectF(bx, max(by, sy - 8), bw, 8))
+
+
+class BiometricFingerprintWidget(QWidget):
+    """
+    Biometric Fingerprint Scanner Widget (Screenshot 1: Middle-Left Biometric Box).
+    Features corner brackets, procedural fingerprint ridges, and oscillating laser scan bar.
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(115)
+        self._laser_y = 0.0
+        self._dir = 1
+        self._tmr = QTimer(self)
+        self._tmr.timeout.connect(self._step)
+        self._tmr.start(30)
+
+    def _step(self):
+        self._laser_y += 0.02 * self._dir
+        if self._laser_y >= 1.0:
+            self._laser_y = 1.0
+            self._dir = -1
+        elif self._laser_y <= 0.0:
+            self._laser_y = 0.0
+            self._dir = 1
+        if self.isVisible():
+            self.update()
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        if not p.isActive():
+            return
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        W, H = self.width(), self.height()
+        main = qcol(C.PRI)
+        bg = qcol(C.BG)
+
+        def blend(col: QColor, a: float) -> QColor:
+            k = max(0.0, min(1.0, a))
+            return QColor(int(bg.red()   + (col.red()   - bg.red())   * k),
+                          int(bg.green() + (col.green() - bg.green()) * k),
+                          int(bg.blue()  + (col.blue()  - bg.blue())  * k))
+
+        # Panel backplate
+        p.fillRect(self.rect(), qcol(C.PANEL))
+        p.setPen(QPen(blend(main, 0.35), 1))
+        p.drawRect(QRectF(1, 1, W - 2, H - 2))
+
+        # Corner brackets ┌ ┐ └ ┘
+        arm = 8.0
+        p.setPen(QPen(blend(main, 0.95), 1.5))
+        p.drawLine(QLineF(5, 5, 5 + arm, 5))
+        p.drawLine(QLineF(5, 5, 5, 5 + arm))
+        p.drawLine(QLineF(W - 5, 5, W - 5 - arm, 5))
+        p.drawLine(QLineF(W - 5, 5, W - 5, 5 + arm))
+        p.drawLine(QLineF(5, H - 5, 5 + arm, H - 5))
+        p.drawLine(QLineF(5, H - 5, 5, H - 5 - arm))
+        p.drawLine(QLineF(W - 5, H - 5, W - 5 - arm, H - 5))
+        p.drawLine(QLineF(W - 5, H - 5, W - 5, H - 5 - arm))
+
+        # Header title
+        p.setFont(mono_font(6, QFont.Weight.Bold))
+        p.setPen(QPen(blend(main, 0.75), 1))
+        p.drawText(QRectF(8, 6, W - 16, 12), Qt.AlignmentFlag.AlignCenter, "BIO-SCAN // FINGERPRINT")
+
+        # Procedural fingerprint ridges
+        fcx, fcy = W / 2.0, (H / 2.0) + 2.0
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        for loop in range(3, 24, 4):
+            rw = loop * 1.5
+            rh = loop * 2.1
+            p.setPen(QPen(blend(main, 0.35 + 0.30 * math.sin(loop * 0.7)), 1.1))
+            p.drawArc(QRectF(fcx - rw, fcy - rh, rw * 2, rh * 2), 35 * 16, 290 * 16)
+
+        # Oscillating laser scan beam
+        ly = 22.0 + self._laser_y * (H - 38.0)
+        p.setPen(QPen(blend(qcol(C.ACC), 0.95), 1.4))
+        p.drawLine(QLineF(12, ly, W - 12, ly))
+
+        grad = QLinearGradient(0, ly - 5, 0, ly + 5)
+        grad.setColorAt(0.0, QColor(0, 0, 0, 0))
+        grad.setColorAt(0.5, blend(qcol(C.ACC), 0.35))
+        grad.setColorAt(1.0, QColor(0, 0, 0, 0))
+        p.fillRect(QRectF(12, ly - 5, W - 24, 10), QBrush(grad))
+
+        # Bottom verification badge
+        p.setFont(mono_font(6, QFont.Weight.Bold))
+        p.setPen(QPen(blend(qcol(C.GREEN), 0.95), 1))
+        p.drawText(QRectF(8, H - 15, W - 16, 12), Qt.AlignmentFlag.AlignCenter, "VERIFIED // ALPHA-1")
+
+
+class WireframePoseWidget(QWidget):
+    """
+    Tactical Wireframe Humanoid Telemetry Widget (Screenshot 1: Lower-Left Wireframe Figure).
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(98)
+        self._tick = 0
+        self._tmr = QTimer(self)
+        self._tmr.timeout.connect(self._step)
+        self._tmr.start(35)
+
+    def _step(self):
+        self._tick += 1
+        if self.isVisible():
+            self.update()
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        if not p.isActive():
+            return
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        W, H = self.width(), self.height()
+        main = qcol(C.PRI)
+        bg = qcol(C.BG)
+
+        def blend(col: QColor, a: float) -> QColor:
+            k = max(0.0, min(1.0, a))
+            return QColor(int(bg.red()   + (col.red()   - bg.red())   * k),
+                          int(bg.green() + (col.green() - bg.green()) * k),
+                          int(bg.blue()  + (col.blue()  - bg.blue())  * k))
+
+        p.fillRect(self.rect(), qcol(C.PANEL))
+        p.setPen(QPen(blend(main, 0.35), 1))
+        p.drawRect(QRectF(1, 1, W - 2, H - 2))
+
+        # Title
+        p.setFont(mono_font(6, QFont.Weight.Bold))
+        p.setPen(QPen(blend(main, 0.75), 1))
+        p.drawText(QRectF(8, 5, W - 16, 12), Qt.AlignmentFlag.AlignCenter, "TELEMETRY // POSE TRACK")
+
+        cx = W / 2.0
+        cy = 44.0
+        t = self._tick * 0.08
+        walk = math.sin(t) * 4.5
+
+        # Head
+        p.setPen(QPen(blend(main, 0.90), 1.3))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(QPointF(cx, cy - 20), 4.5, 4.5)
+
+        # Spine & limbs
+        p.drawLine(QLineF(cx, cy - 15, cx, cy + 5))
+        p.drawLine(QLineF(cx - 11, cy - 10, cx + 11, cy - 10))
+        p.drawLine(QLineF(cx - 11, cy - 10, cx - 15, cy + 2 - walk))
+        p.drawLine(QLineF(cx + 11, cy - 10, cx + 15, cy + 2 + walk))
+        p.drawLine(QLineF(cx - 7, cy + 5, cx + 7, cy + 5))
+        p.drawLine(QLineF(cx - 7, cy + 5, cx - 9, cy + 20 + walk))
+        p.drawLine(QLineF(cx + 7, cy + 5, cx + 9, cy + 20 - walk))
+        p.drawLine(QLineF(cx - 9, cy + 20 + walk, cx - 13, cy + 34 + walk * 0.6))
+        p.drawLine(QLineF(cx + 9, cy + 20 - walk, cx + 13, cy + 34 - walk * 0.6))
+
+        # Joints glowing dots
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(blend(qcol(C.WHITE), 0.95)))
+        for jx, jy in [(cx - 11, cy - 10), (cx + 11, cy - 10), (cx, cy + 5),
+                       (cx - 9, cy + 20 + walk), (cx + 9, cy + 20 - walk)]:
+            p.drawEllipse(QPointF(jx, jy), 1.6, 1.6)
+
+        p.setFont(mono_font(6, QFont.Weight.Medium))
+        p.setPen(QPen(blend(main, 0.70), 1))
+        p.drawText(QRectF(8, H - 14, W - 16, 12), Qt.AlignmentFlag.AlignCenter, "TARGET ACQUIRED: LOCAL")
+
+
+class SubjectDossierCard(QWidget):
+    """
+    Tactical Dossier Card Widget (Screenshot 1: Exact recreation of SUBJECT A-34 metadata dossier).
+    """
+    def __init__(self, assistant_name="ALFRED.MK-II", parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(152)
+        self._asst_name = assistant_name
+
+    def set_name(self, name: str):
+        self._asst_name = name.upper()
+        self.update()
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        if not p.isActive():
+            return
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        W, H = self.width(), self.height()
+        main = qcol(C.PRI)
+        bg = qcol(C.BG)
+
+        def blend(col: QColor, a: float) -> QColor:
+            k = max(0.0, min(1.0, a))
+            return QColor(int(bg.red()   + (col.red()   - bg.red())   * k),
+                          int(bg.green() + (col.green() - bg.green()) * k),
+                          int(bg.blue()  + (col.blue()  - bg.blue())  * k))
+
+        p.fillRect(self.rect(), qcol(C.PANEL))
+        p.setPen(QPen(blend(main, 0.40), 1))
+        p.drawRect(QRectF(1, 1, W - 2, H - 2))
+
+        # Corner brackets ┌ ┐ └ ┘
+        arm = 10.0
+        p.setPen(QPen(blend(main, 0.95), 1.5))
+        p.drawLine(QLineF(4, 4, 4 + arm, 4))
+        p.drawLine(QLineF(4, 4, 4, 4 + arm))
+        p.drawLine(QLineF(W - 4, 4, W - 4 - arm, 4))
+        p.drawLine(QLineF(W - 4, 4, W - 4, 4 + arm))
+        p.drawLine(QLineF(4, H - 4, 4 + arm, H - 4))
+        p.drawLine(QLineF(4, H - 4, 4, H - 4 - arm))
+        p.drawLine(QLineF(W - 4, H - 4, W - 4 - arm, H - 4))
+        p.drawLine(QLineF(W - 4, H - 4, W - 4, H - 4 - arm))
+
+        # Header Row
+        p.setFont(mono_font(8, QFont.Weight.Bold))
+        p.setPen(QPen(blend(main, 0.95), 1))
+        p.drawText(QRectF(12, 7, 180, 14), Qt.AlignmentFlag.AlignLeft, "SUBJECT A-34")
+        p.setPen(QPen(blend(qcol(C.ACC), 0.95), 1))
+        p.drawText(QRectF(W - 88, 7, 76, 14), Qt.AlignmentFlag.AlignRight, "[■■■■■]")
+
+        p.setPen(QPen(blend(main, 0.25), 1))
+        p.drawLine(QLineF(8, 24, W - 8, 24))
+
+        rows = [
+            ("NAME", self._asst_name),
+            ("INCEPT DATE", "03/05/2026"),
+            ("FUNCTION", "TACTICAL PERSONAL ASSISTANT"),
+            ("MENTAL STATE", "OPERATIONAL // ACTIVE"),
+            ("LAST KNOWN LOC", "WAYNE MANOR // LOCALHOST"),
+            ("THREAT ASSESSMENT", "★★★"),
+            ("SPECIAL SKILLS", "[AI]  [SYS]  [SEC]  [AUDIO]"),
+        ]
+
+        f_key = mono_font(7, QFont.Weight.Bold)
+        f_val = mono_font(7, QFont.Weight.DemiBold)
+        sy = 30
+        for k, v in rows:
+            p.setFont(f_key)
+            p.setPen(QPen(blend(main, 0.55), 1))
+            p.drawText(QRectF(12, sy, 115, 14), Qt.AlignmentFlag.AlignLeft, k)
+            p.setFont(f_val)
+            if k == "THREAT ASSESSMENT":
+                p.setPen(QPen(blend(qcol(C.ACC), 0.95), 1))
+            elif k == "MENTAL STATE":
+                p.setPen(QPen(blend(qcol(C.GREEN), 0.95), 1))
+            else:
+                p.setPen(QPen(blend(qcol(C.WHITE), 0.92), 1))
+            p.drawText(QRectF(130, sy, W - 142, 14), Qt.AlignmentFlag.AlignLeft, v)
+            sy += 16
 
 class MetricBar(QWidget):
 
@@ -2350,29 +2963,27 @@ class CustomizeOverlay(QWidget):
                f"QLineEdit:focus {{ border: 1px solid {C.PRI}; background: rgba(0, 240, 255, 0.08); }}")
 
         # ── Persona Presets Row ──────────────────────────────────────────
-        lay.addWidget(_lbl("TACTICAL PERSONA PRESETS", 8, bold=True, color=C.TEXT_DIM))
-        persona_row = QHBoxLayout(); persona_row.setSpacing(6)
+        lay.addWidget(_lbl("TACTICAL CRT THEME PRESETS", 8, bold=True, color=C.TEXT_DIM))
+        persona_row = QHBoxLayout(); persona_row.setSpacing(8)
         presets = [
-            ("🦇 ALFRED", "Alfred", "Master Wayne", "#e5a93b", "Fenrir"),
-            ("🦇 BATMAN", "Batcomputer", "Bruce", "#00f0ff", "Kore"),
-            ("⚡ JARVIS", "J.A.R.V.I.S", "Sir", "#00f0ff", "Puck"),
-            ("⌬ FRIDAY", "F.R.I.D.A.Y", "Boss", "#00ff9d", "Aoede"),
+            ("💜 DOSSIER CRT [A-34]", "Alfred", "Master Wayne", "#8e9bff", "Fenrir"),
+            ("💚 VECTOR CRT [WAKU]",  "Alfred", "Master Wayne", "#a8ff3e", "Puck"),
         ]
         for pill_label, p_name, p_user, p_color, p_voice in presets:
             pb = QPushButton(pill_label)
-            pb.setFixedHeight(28)
-            pb.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=0.5))
+            pb.setFixedHeight(30)
+            pb.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=0.6))
             pb.setCursor(Qt.CursorShape.PointingHandCursor)
             pb.setStyleSheet(f"""
                 QPushButton {{
-                    background: rgba(255, 255, 255, 0.04);
-                    color: {C.TEXT_MED};
-                    border: 1px solid rgba(0, 240, 255, 0.15);
+                    background: rgba(255, 255, 255, 0.05);
+                    color: {C.TEXT_BRIGHT};
+                    border: 1px solid rgba(255, 255, 255, 0.20);
                     border-radius: 7px;
-                    padding: 0 8px;
+                    padding: 0 10px;
                 }}
                 QPushButton:hover {{
-                    background: rgba(0, 240, 255, 0.16);
+                    background: rgba(142, 155, 255, 0.22);
                     color: #ffffff;
                     border-color: {C.PRI};
                 }}
@@ -2419,31 +3030,26 @@ class CustomizeOverlay(QWidget):
         self._refresh_voice_btns()
 
         # ── Quick Chromatic Preset Chips ─────────────────────────────────
-        lay.addWidget(_lbl("CHROMATIC MATRIX // TACTICAL PALETTES", 8, bold=True, color=C.TEXT_DIM))
+        lay.addWidget(_lbl("AUTHENTIC CRT THEMES // SCREENSHOT 1 & 2", 8, bold=True, color=C.TEXT_DIM))
         swatch_grid = QGridLayout()
-        swatch_grid.setSpacing(6)
+        swatch_grid.setSpacing(8)
         swatch_grid.setContentsMargins(0, 0, 0, 0)
         swatches = [
-            ("GOTHAM GOLD", "#e5a93b"),
-            ("BAT-CYAN",   "#00f0ff"),
-            ("NIGHTWING",  "#00b4d8"),
-            ("DARK KNIGHT", "#ff2a55"),
-            ("ARKHAM",     "#00ff9d"),
-            ("PURPLE",     "#a855f7"),
-            ("STEALTH",    "#94a3b8"),
+            ("💜 DOSSIER CRT [A-34]", "#8e9bff"),
+            ("💚 VECTOR CRT [WAKU]",  "#a8ff3e"),
         ]
         for idx, (s_lbl, s_hex) in enumerate(swatches):
             sb = QPushButton(s_lbl)
-            sb.setFixedHeight(27)
-            sb.setFont(tech_font(7, QFont.Weight.Bold, letter_spacing=0.4))
+            sb.setFixedHeight(32)
+            sb.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=0.6))
             sb.setCursor(Qt.CursorShape.PointingHandCursor)
             sb.setStyleSheet(f"""
                 QPushButton {{
-                    background: rgba(255, 255, 255, 0.04);
+                    background: rgba(255, 255, 255, 0.05);
                     color: {s_hex};
-                    border: 1px solid {s_hex}66;
-                    border-radius: 6px;
-                    padding: 0 6px;
+                    border: 1px solid {s_hex}88;
+                    border-radius: 7px;
+                    padding: 0 10px;
                 }}
                 QPushButton:hover {{
                     background: {s_hex}33;
@@ -2451,9 +3057,7 @@ class CustomizeOverlay(QWidget):
                 }}
             """)
             sb.clicked.connect(lambda _, h=s_hex: self._set_color(h))
-            row = idx // 4
-            col = idx % 4
-            swatch_grid.addWidget(sb, row, col)
+            swatch_grid.addWidget(sb, 0, idx)
         lay.addLayout(swatch_grid)
 
         # ── HueWheel & Hex input ─────────────────────────────────────────
@@ -4669,64 +5273,61 @@ class MainWindow(QMainWindow):
 
     def _build_header(self) -> QWidget:
         w = QWidget()
-        w.setFixedHeight(60)
+        w.setFixedHeight(56)
         w.setStyleSheet(f"""
             QWidget {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(6, 18, 32, 0.90), stop:1 rgba(2, 8, 16, 0.96));
-                border-bottom: 1px solid rgba(0, 240, 255, 0.16);
+                background: {C.PANEL};
+                border-bottom: 1px solid {C.BORDER_A};
             }}
         """)
         lay = QHBoxLayout(w)
-        lay.setContentsMargins(18, 0, 18, 0)
+        lay.setContentsMargins(14, 0, 14, 0)
 
-        self._drawer_btn = QPushButton("🦇  BATCAVE TACTICAL CONTROLS")
-        self._drawer_btn.setFixedHeight(34)
-        self._drawer_btn.setFont(tech_font(9, QFont.Weight.Medium, letter_spacing=0.5))
+        self._drawer_btn = QPushButton("⚙  TACTICAL CONTROLS")
+        self._drawer_btn.setFixedHeight(30)
+        self._drawer_btn.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.5))
         self._drawer_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._drawer_btn.setToolTip("Batcave System Controls & Neural Parameters")
         self._drawer_btn.setStyleSheet(f"""
             QPushButton {{
                 background: rgba(255, 255, 255, 0.04);
                 color: {C.TEXT_MED};
-                border: 1px solid rgba(255, 255, 255, 0.10);
-                border-radius: 9px;
-                padding: 0 14px;
+                border: 1px solid {C.BORDER};
+                border-radius: 6px;
+                padding: 0 10px;
             }}
             QPushButton:hover {{
-                background: rgba(0, 240, 255, 0.12);
+                background: rgba(142, 155, 255, 0.16);
                 color: #ffffff;
-                border: 1px solid rgba(0, 240, 255, 0.45);
+                border: 1px solid {C.PRI};
             }}
             QPushButton:checked {{
                 color: {C.PRI};
                 border: 1px solid {C.PRI};
-                background: rgba(0, 240, 255, 0.18);
+                background: rgba(142, 155, 255, 0.22);
             }}
         """)
         self._drawer_btn.setCheckable(True)
         self._drawer_btn.clicked.connect(self._toggle_drawer)
         lay.addWidget(self._drawer_btn)
 
-        self._directives_btn = QPushButton("📋  WAYNE ARCHIVES // DIRECTIVES")
-        self._directives_btn.setFixedHeight(34)
-        self._directives_btn.setFont(tech_font(9, QFont.Weight.Medium, letter_spacing=0.5))
+        self._directives_btn = QPushButton("📋  DIRECTIVES ARCHIVE")
+        self._directives_btn.setFixedHeight(30)
+        self._directives_btn.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.5))
         self._directives_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._directives_btn.setToolTip("View full catalog of Alfred's skills & capabilities")
+        self._directives_btn.setToolTip("View full catalog of skills & capabilities")
         self._directives_btn.setStyleSheet(f"""
             QPushButton {{
                 background: rgba(255, 255, 255, 0.04);
                 color: {C.TEXT_MED};
-                border: 1px solid rgba(255, 255, 255, 0.10);
-                border-radius: 9px;
-                padding: 0 14px;
+                border: 1px solid {C.BORDER};
+                border-radius: 6px;
+                padding: 0 10px;
             }}
             QPushButton:hover {{
-                background: rgba(0, 240, 255, 0.14);
+                background: rgba(142, 155, 255, 0.16);
                 color: #ffffff;
-                border: 1px solid rgba(0, 240, 255, 0.45);
-            }}
-            QPushButton:pressed {{
-                background: rgba(0, 240, 255, 0.22);
+                border: 1px solid {C.PRI};
             }}
         """)
         self._directives_btn.clicked.connect(self._open_directives)
@@ -4736,31 +5337,28 @@ class MainWindow(QMainWindow):
 
         mid = QVBoxLayout(); mid.setSpacing(2)
         _disp = self._assistant_name.upper()
-        self._title_lbl = QLabel(_disp)
+        self._title_lbl = QLabel(f"┌  {_disp} // {APP_VERSION}  ┐")
         self._title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._title_lbl.setFont(tech_font(17, QFont.Weight.Bold, letter_spacing=4.0))
+        self._title_lbl.setFont(mono_font(12, QFont.Weight.Bold, letter_spacing=2.5))
         self._title_lbl.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         mid.addWidget(self._title_lbl)
 
-        _sub_text = ("BATCAVE TACTICAL CORE // MARK LIV"
-                     if _disp in ("ALFRED", "BATMAN")
-                     else "STARK NEURAL INTERFACE // MARK LIV")
-        self._sub_lbl = QLabel(_sub_text)
+        self._sub_lbl = QLabel("WAYNE TECH PROTOCOL // TACTICAL CRT HUD")
         self._sub_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._sub_lbl.setFont(tech_font(8, QFont.Weight.Medium, letter_spacing=2.2))
-        self._sub_lbl.setStyleSheet(f"color: rgba(0, 240, 255, 0.55); background: transparent;")
+        self._sub_lbl.setFont(mono_font(7, QFont.Weight.Medium, letter_spacing=1.6))
+        self._sub_lbl.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
         mid.addWidget(self._sub_lbl)
         lay.addLayout(mid)
         lay.addStretch()
 
         right_col = QVBoxLayout(); right_col.setSpacing(2)
         self._clock_lbl = QLabel("00:00:00")
-        self._clock_lbl.setFont(mono_font(14, QFont.Weight.Bold, letter_spacing=1.0))
+        self._clock_lbl.setFont(mono_font(12, QFont.Weight.Bold, letter_spacing=1.0))
         self._clock_lbl.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         self._clock_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
         right_col.addWidget(self._clock_lbl)
         self._date_lbl = QLabel("")
-        self._date_lbl.setFont(tech_font(8, QFont.Weight.Normal, letter_spacing=0.6))
+        self._date_lbl.setFont(mono_font(7, QFont.Weight.Normal, letter_spacing=0.5))
         self._date_lbl.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
         self._date_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
         right_col.addWidget(self._date_lbl)
@@ -4776,20 +5374,32 @@ class MainWindow(QMainWindow):
         w.setFixedWidth(_LEFT_W)
         w.setStyleSheet(f"""
             QWidget {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(2, 8, 16, 0.95), stop:1 rgba(4, 12, 22, 0.85));
-                border-right: 1px solid rgba(0, 240, 255, 0.12);
+                background: {C.PANEL};
+                border-right: 1px solid {C.BORDER_A};
             }}
         """)
         lay = QVBoxLayout(w)
-        lay.setContentsMargins(10, 12, 10, 12)
+        lay.setContentsMargins(8, 8, 8, 8)
         lay.setSpacing(8)
 
-        hdr = QLabel("BATCAVE TELEMETRY MATRIX")
-        hdr.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=1.8))
-        hdr.setStyleSheet(f"color: rgba(0, 240, 255, 0.85); background: transparent; "
-                          f"border-bottom: 1px solid rgba(0, 240, 255, 0.15); padding-bottom: 6px;")
-        lay.addWidget(hdr)
+        # 1. Optical Recon Scanner Widget (Screenshot 1 top-left)
+        self._recon_widget = CRTReconWidget()
+        lay.addWidget(self._recon_widget)
+
+        # 2. Biometric Fingerprint Scanner Widget (Screenshot 1 middle-left)
+        self._bio_widget = BiometricFingerprintWidget()
+        lay.addWidget(self._bio_widget)
+
+        # 3. Telemetry Pose Humanoid Widget (Screenshot 1 lower-left)
+        self._pose_widget = WireframePoseWidget()
+        lay.addWidget(self._pose_widget)
+
+        # 4. Metric Bars
         lay.addSpacing(2)
+        hdr_m = QLabel("SYS TELEMETRY")
+        hdr_m.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=1.0))
+        hdr_m.setStyleSheet(f"color: {C.PRI}; background: transparent; border: none; padding-left: 2px;")
+        lay.addWidget(hdr_m)
 
         self._bar_cpu = MetricBar("CPU", C.PRI)
         self._bar_mem = MetricBar("MEM", C.ACC2)
@@ -4797,55 +5407,11 @@ class MainWindow(QMainWindow):
         self._bar_gpu = MetricBar("GPU", C.ACC)
         self._bar_tmp = MetricBar("TMP", "#ff5577")
 
-        for bar in [self._bar_cpu, self._bar_mem, self._bar_net,
-                    self._bar_gpu, self._bar_tmp]:
+        for bar in [self._bar_cpu, self._bar_mem, self._bar_net, self._bar_gpu, self._bar_tmp]:
+            bar.setFixedHeight(34)
             lay.addWidget(bar)
 
-        lay.addSpacing(4)
-
-        info_panel = QWidget()
-        info_panel.setStyleSheet(
-            f"background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 9px;"
-        )
-        ip_lay = QVBoxLayout(info_panel)
-        ip_lay.setContentsMargins(10, 8, 10, 8)
-        ip_lay.setSpacing(4)
-
-        self._uptime_lbl = QLabel("⏱ UP  --:--")
-        self._uptime_lbl.setFont(mono_font(8, QFont.Weight.Bold))
-        self._uptime_lbl.setStyleSheet(f"color: {C.GREEN}; background: transparent; border: none;")
-        ip_lay.addWidget(self._uptime_lbl)
-
-        self._proc_lbl = QLabel("⬡ PROC  --")
-        self._proc_lbl.setFont(mono_font(8, QFont.Weight.Bold))
-        self._proc_lbl.setStyleSheet(f"color: {C.TEXT_MED}; background: transparent; border: none;")
-        ip_lay.addWidget(self._proc_lbl)
-
-        os_name = {"Windows": "WIN", "Darwin": "macOS", "Linux": "LINUX"}.get(_OS, _OS.upper())
-        os_lbl = QLabel(f"⚡ OS  {os_name}")
-        os_lbl.setFont(mono_font(8, QFont.Weight.Bold))
-        os_lbl.setStyleSheet(f"color: {C.ACC2}; background: transparent; border: none;")
-        ip_lay.addWidget(os_lbl)
-
-        lay.addWidget(info_panel)
-        lay.addSpacing(4)
-
         lay.addStretch()
-
-        for txt, col in [
-            ("⚡  COWL NEURAL CORE\nONLINE",       C.GREEN),
-            ("🛡  WAYNE SEC-LEVEL 5\nRESTRICTED", C.PRI),
-            ("⌬  PROTOCOL\n" + APP_PROTOCOL,     C.TEXT_DIM),
-        ]:
-            lbl = QLabel(txt)
-            lbl.setFont(tech_font(8, QFont.Weight.DemiBold, letter_spacing=0.8))
-            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setStyleSheet(
-                f"color: {col}; background: rgba(255, 255, 255, 0.025);"
-                f"border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 9px; padding: 7px;"
-            )
-            lay.addWidget(lbl)
-
         return w
 
     def _build_right_panel(self) -> QWidget:
@@ -4853,34 +5419,30 @@ class MainWindow(QMainWindow):
         w.setFixedWidth(_RIGHT_W)
         w.setStyleSheet(f"""
             QWidget {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(4, 12, 22, 0.85), stop:1 rgba(2, 8, 16, 0.95));
-                border-left: 1px solid rgba(0, 240, 255, 0.12);
+                background: {C.PANEL};
+                border-left: 1px solid {C.BORDER_A};
             }}
         """)
         lay = QVBoxLayout(w)
-        lay.setContentsMargins(10, 10, 10, 10)
+        lay.setContentsMargins(10, 8, 10, 8)
         lay.setSpacing(8)
 
-        def _sec(txt):
-            l = QLabel(txt)
-            l.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=1.8))
-            l.setStyleSheet(f"color: rgba(0, 240, 255, 0.85); background: transparent;")
-            return l
+        # 1. Subject Tactical Dossier Card (Screenshot 1 exact card!)
+        self._dossier_card = SubjectDossierCard(self._assistant_name)
+        lay.addWidget(self._dossier_card)
 
-        # Segmented tab header: Activity Stream vs Intel & Notes
-        tab_row = QHBoxLayout()
-        tab_row.setSpacing(6)
-
-        self._tab_activity_btn = QPushButton("◈ BATCAVE TELEMETRY")
+        # 2. Segmented tab header: Telemetry vs Dossier Notes
+        tab_row = QHBoxLayout(); tab_row.setSpacing(6)
+        self._tab_activity_btn = QPushButton("◈ TELEMETRY")
         self._tab_activity_btn.setFixedHeight(28)
-        self._tab_activity_btn.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=0.8))
+        self._tab_activity_btn.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=0.8))
         self._tab_activity_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._tab_activity_btn.setCheckable(True)
         self._tab_activity_btn.setChecked(True)
 
-        self._tab_notes_btn = QPushButton("📝 TACTICAL INTEL & DOSSIER")
+        self._tab_notes_btn = QPushButton("📝 DOSSIER")
         self._tab_notes_btn.setFixedHeight(28)
-        self._tab_notes_btn.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=0.8))
+        self._tab_notes_btn.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=0.8))
         self._tab_notes_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._tab_notes_btn.setCheckable(True)
         self._tab_notes_btn.setChecked(False)
@@ -4902,54 +5464,45 @@ class MainWindow(QMainWindow):
         lay.addWidget(self._terminal_stack, stretch=1)
         self._update_tab_button_styles(0)
 
-        sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet(f"color: rgba(0, 240, 255, 0.12); margin: 2px 0;")
-        lay.addWidget(sep)
-
-        lay.addWidget(_sec("FORENSIC DATA INGESTION"))
+        # 3. Forensic Data Ingestion
         self._drop_zone = FileDropZone()
         self._drop_zone.file_selected.connect(self._on_file_selected)
         lay.addWidget(self._drop_zone)
 
         self._file_hint = QLabel("Drop surveillance captures, audio logs or telemetry evidence")
-        self._file_hint.setFont(tech_font(7, letter_spacing=0.4))
+        self._file_hint.setFont(mono_font(6, letter_spacing=0.3))
         self._file_hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
         self._file_hint.setWordWrap(True)
         lay.addWidget(self._file_hint)
 
-        sep2 = QFrame(); sep2.setFrameShape(QFrame.Shape.HLine)
-        sep2.setStyleSheet(f"color: rgba(0, 240, 255, 0.12); margin: 2px 0;")
-        lay.addWidget(sep2)
-
-        lay.addWidget(_sec("BATCAVE DIRECTIVE INPUT"))
+        # 4. Directive Input Row
         lay.addLayout(self._build_input_row())
 
-        self._interrupt_btn = QPushButton("⛔  EMERGENCY PURGE PROTOCOL  [ESC]")
-        self._interrupt_btn.setFixedHeight(38)
-        self._interrupt_btn.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=1.2))
+        # 5. Emergency Purge Button
+        self._interrupt_btn = QPushButton("⛔  ABORT DIRECTIVE  [ESC]")
+        self._interrupt_btn.setFixedHeight(34)
+        self._interrupt_btn.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=1.0))
         self._interrupt_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._interrupt_btn.setStyleSheet(f"""
             QPushButton {{
-                background: rgba(255, 42, 85, 0.10);
+                background: rgba(255, 42, 85, 0.12);
                 color: #ff4466;
-                border: 1px solid rgba(255, 42, 85, 0.40);
-                border-radius: 9px;
+                border: 1px solid rgba(255, 42, 85, 0.45);
+                border-radius: 6px;
             }}
             QPushButton:hover {{
-                background: rgba(255, 42, 85, 0.25);
+                background: rgba(255, 42, 85, 0.28);
                 border: 1px solid #ff2a55;
                 color: #ffffff;
-            }}
-            QPushButton:pressed {{
-                background: rgba(255, 42, 85, 0.40);
             }}
         """)
         self._interrupt_btn.clicked.connect(self._do_interrupt)
         lay.addWidget(self._interrupt_btn)
 
-        self._mute_btn = QPushButton("🦇  ACOUSTIC SENSORS: ONLINE // COWL PROTOCOL")
-        self._mute_btn.setFixedHeight(34)
-        self._mute_btn.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=1.0))
+        # 6. Mute Button
+        self._mute_btn = QPushButton("BATCAVE SENSORS: ONLINE")
+        self._mute_btn.setFixedHeight(32)
+        self._mute_btn.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.8))
         self._mute_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._mute_btn.clicked.connect(self._toggle_mute)
         self._style_mute_btn()
@@ -5678,19 +6231,19 @@ class MainWindow(QMainWindow):
         w = QWidget()
         w.setFixedHeight(26)
         w.setStyleSheet(f"""
-            background: rgba(2, 7, 14, 0.96);
-            border-top: 1px solid rgba(0, 240, 255, 0.14);
+            background: {C.PANEL};
+            border-top: 1px solid {C.BORDER_A};
         """)
-        lay = QHBoxLayout(w); lay.setContentsMargins(18, 0, 18, 0)
+        lay = QHBoxLayout(w); lay.setContentsMargins(14, 0, 14, 0)
 
         def _fl(txt, color=C.TEXT_MED):
-            l = QLabel(txt); l.setFont(tech_font(7, QFont.Weight.Medium, letter_spacing=0.8))
+            l = QLabel(txt); l.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=0.8))
             l.setStyleSheet(f"color: {color}; background: transparent;")
             return l
 
-        lay.addWidget(_fl("⌨ [F4] MUTE  ·  [F11] FULLSCREEN  ·  [ESC] ABORT DIRECTIVE"))
+        lay.addWidget(_fl("CONTROL YOUR DATA · PROTECT YOUR PRIVACY · WAYNE TACTICAL OS"))
         lay.addStretch()
-        lay.addWidget(_fl("STARK INDUSTRIES // MARK LIV TACTICAL HUD", C.PRI_DIM))
+        lay.addWidget(_fl("⌨ [F4] MUTE  ·  [F11] FULLSCREEN  ·  [ESC] ABORT", C.PRI_DIM))
         return w
 
     def _on_file_selected(self, path: str):
@@ -6215,13 +6768,12 @@ class MainWindow(QMainWindow):
         self._assistant_name = name.strip() or "Alfred"
         display = self._assistant_name.upper()
         self.setWindowTitle(f"{display} — {APP_VERSION}")
-        self._title_lbl.setText(display)
-        if display in ("JARVIS", "J.A.R.V.I.S"):
-            self._sub_lbl.setText("Just A Rather Very Intelligent System")
-        else:
-            self._sub_lbl.setText("Personal AI Assistant")
+        self._title_lbl.setText(f"┌  {display} // {APP_VERSION}  ┐")
+        self._sub_lbl.setText("WAYNE TECH PROTOCOL // TACTICAL CRT HUD")
         self._log._ai_name_lc = self._assistant_name.lower()
         self.hud._assistant_name = display
+        if hasattr(self, "_dossier_card") and self._dossier_card:
+            self._dossier_card.set_name(display)
         try:
             if self.hud._avatar and hasattr(self.hud._avatar, "reload_mesh"):
                 self.hud._avatar.reload_mesh()
