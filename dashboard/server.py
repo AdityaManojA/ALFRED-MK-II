@@ -11,6 +11,7 @@ Install deps:  pip install fastapi "uvicorn[standard]" cryptography
 import asyncio
 import base64
 import hashlib
+import json
 import re
 import secrets
 import socket
@@ -560,9 +561,24 @@ class DashboardServer:
             # Auth is handled client-side via sessionStorage bearer token.
             # Server-side header auth can't work here because browser navigations
             # don't send custom headers (location.href doesn't carry Authorization).
-            html = (self._app_html
+            try:
+                raw_html = _read("app.html")
+            except Exception:
+                raw_html = self._app_html
+
+            theme_color = "#00d4ff"
+            try:
+                cfg_path = BASE_DIR / "config" / "api_keys.json"
+                if cfg_path.exists():
+                    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+                    theme_color = cfg.get("ui_color", theme_color)
+            except Exception:
+                pass
+
+            html = (raw_html
                     .replace("__IP__", self._ip)
-                    .replace("__PORT__", str(PORT)))
+                    .replace("__PORT__", str(PORT))
+                    .replace("__THEME_COLOR__", theme_color))
             return HTMLResponse(html)
 
         @app.post("/login")
