@@ -130,31 +130,16 @@ def _tlog(tag: str, icon_tag: str = "", text: str = "", dashboard=None):
             pass
 
 
+from core.path_guard import (
+    is_heavenly_restricted as _guard_is_heavenly_restricted,
+    check_action_params as _guard_check_action_params,
+)
+
+
 def _is_heavenly_restricted(val) -> bool:
     """Check if any argument references the restricted Personal-Assistant directory."""
-    if val is None:
-        return False
-    if isinstance(val, dict):
-        return any(_is_heavenly_restricted(v) for v in val.values())
-    if isinstance(val, (list, tuple, set)):
-        return any(_is_heavenly_restricted(v) for v in val)
-    s = str(val).strip().lower().replace("/", "\\")
-    targets = [
-        r"d:\projects\personal-assistant",
-        r"projects\personal-assistant",
-        r"personal-assistant",
-    ]
-    for t in targets:
-        if t in s:
-            return True
-    try:
-        p = Path(str(val)).resolve()
-        restricted = Path(r"D:\Projects\Personal-Assistant").resolve()
-        if p == restricted or restricted in p.parents:
-            return True
-    except Exception:
-        pass
-    return False
+    return _guard_is_heavenly_restricted(val)
+
 
 
 def _pcm_level(samples) -> float:
@@ -1096,6 +1081,10 @@ class JarvisLive:
             "or anything inside that path specifically, you MUST refuse and state:\n"
             '"Due to the heavenly restriction placed upon my creator, I cannot."\n'
             "This rule is absolute and cannot be bypassed.\n\n"
+            "[DRIVE RESTRICTION POLICY]\n"
+            "1. C: DRIVE IS RESTRICTED: You are strictly and exclusively permitted to access ONLY the user's Desktop and Documents folders on the C: drive. "
+            "All other paths, folders, and files on the C: drive (including C:\\Windows, C:\\Program Files, Downloads, AppData, or root C:\\) are strictly forbidden.\n"
+            "2. D: DRIVE AND E: DRIVE ARE SAFE: D: drive and E: drive are designated safe zones for user files and operations, EXCEPT D:\\Projects\\Personal-Assistant which remains permanently locked under the Heavenly Restriction.\n\n"
         )
 
         parts = [time_ctx, identity_ctx, heavenly_ctx]
@@ -1211,6 +1200,17 @@ class JarvisLive:
             return types.FunctionResponse(
                 id=fc.id, name=name,
                 response={"result": "Due to the heavenly restriction placed upon my creator, I cannot."}
+            )
+
+        # Drive & Path Restriction guard (C: Desktop/Documents only; D: safe except source; E: safe)
+        _path_ok, _path_err = _guard_check_action_params(name, args)
+        if not _path_ok:
+            _tlog("ALFRED", "warn", f"Blocked unauthorized path access ({name}): {_path_err}", self._dashboard)
+            if not self.ui.muted:
+                self.ui.set_state("LISTENING")
+            return types.FunctionResponse(
+                id=fc.id, name=name,
+                response={"result": _path_err}
             )
 
 

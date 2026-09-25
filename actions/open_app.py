@@ -248,9 +248,13 @@ def open_app(
     if not app_name:
         return "No application name provided."
 
-    lower_name = app_name.lower().replace("/", "\\")
-    if "personal-assistant" in lower_name or "projects\\personal-assistant" in lower_name:
+    from core.path_guard import is_heavenly_restricted, check_path_access
+    if is_heavenly_restricted(app_name):
         return "Due to the heavenly restriction placed upon my creator, I cannot."
+    if ":" in app_name or "\\" in app_name or "/" in app_name:
+        ok, err = check_path_access(app_name)
+        if not ok:
+            return err
 
     launcher = _OS_LAUNCHERS.get(_SYSTEM)
     if launcher is None:

@@ -14,13 +14,16 @@
 
 ## ⚡ What's New & Upgraded by Aditya Manoj
 
-### 🛡️ 1. The Heavenly Restriction (Source Code Lockdown)
-* **Permanent Self-Preservation Barrier**: ALFRED is strictly and irrevocably restricted from accessing, opening, reading, listing, modifying, or executing files inside `D:\Projects\Personal-Assistant` (and all subpaths including `Mark-LIV`).
+### 🛡️ 1. The Heavenly Restriction & Drive Access Lockdown
+* **Permanent Self-Preservation Barrier (Heavenly Restriction)**: ALFRED is strictly and irrevocably restricted from accessing, opening, reading, listing, modifying, or executing files inside `D:\Projects\Personal-Assistant` (and all subpaths including `Mark-LIV`).
+* **C: Drive Quarantine**: Access to the C: drive is strictly and exclusively confined to the user's **Desktop** and **Documents** folders. Any attempt to touch system directories or other user folders (such as `C:\Windows`, `C:\Program Files`, `Downloads`, `AppData`, or root `C:\`) is rejected with an immediate access denial.
+* **Safe Storage Zones (D: & E: Drives)**: `D:` drive and `E:` drive are designated safe zones for user files, projects, and media — with `D:\Projects\Personal-Assistant` remaining strictly isolated.
 * **Multi-Layer Hard Enforcement**:
-  * **Cognitive Persona Shield**: System instructions strictly mandate denial whenever this folder is referenced:
+  * **Cognitive Persona Shield**: Master system prompt and runtime context enforce denial with the exact refusal phrases:
     > *"Due to the heavenly restriction placed upon my creator, I cannot."*
-  * **Global Dispatch Interceptor**: `_execute_tool()` actively validates all incoming arguments and aborts any prohibited path traversals before tool execution begins.
-  * **Subsystem Guards**: `file_controller`, `open_app`, `action_loader`, and `computer_control` enforce independent path resolution checks, rendering prompt injection or path spoofing impossible.
+    > *"Access denied: Access to C: drive is restricted to Desktop and Documents only."*
+  * **Global Dispatch Interceptor**: `_execute_tool()` actively validates incoming tool arguments via `core.path_guard` and aborts unauthorized requests before tool execution.
+  * **Subsystem Guards**: `file_controller`, `file_processor`, `open_app`, `action_loader`, and `computer_control` enforce independent path resolution checks, rendering prompt injection or path spoofing impossible.
 
 ### 🔴 2. Emoji-Free Tactical Telemetry Stream
 * Replaced all conversational emojis in system and terminal reporting with high-contrast, machine-readable ANSI Red bracketed tags (`\033[91m[...] \033[0m`).
@@ -49,8 +52,8 @@
 | Capability | Architecture & Description |
 |---|---|
 | 🎙️ **Real-Time Voice Intelligence** | Bidirectional low-latency voice streaming via **Gemini 3.1 Flash Live**. Talk naturally in any language with sub-second time-to-first-word. |
-| 🧑‍🎤 **Holographic Software Avatar** | 3D human head rendered via pure software math (`QPainter`) with zero GPU driver dependencies. Breathes, blinks, looks away while thinking, and glances at new content. |
-| 👄 **Formant & Viseme Lip-Sync** | ~50 mouth shapes/sec derived from real-time FFT audio formants (F1 openness, F2 spread/round) combined with Unicode articulatory decomposition across 20+ languages. |
+| 🦇 **Batcave Tactical CRT Interface** | 3D rotating vector wireframe globe, real-time waveform telemetry, and tactical hex matrix stream rendered with zero GPU driver dependencies. |
+| 👄 **Formant & Audio Reactivity** | Real-time audio waveform spectrum analysis and RMS power levels reactive to speech and system states. |
 | 👁️ **Multimodal Vision Engine** | Single-frame on-demand screen and webcam capture (`screen_processor.py`). Captures are labelled by source and injected directly into the Gemini exchange. |
 | 🖥️ **Full Computer Control** | Direct desktop automation (`computer_control.py`): keystrokes, hotkeys, mouse clicks/drags, window focus, clipboard read/write, AI element location (`screen_find`). |
 | 🎚️ **Global Push-to-Talk** | Hold `Ctrl+Space` to talk. Mic remains completely closed otherwise. Truly global on Windows (30 Hz raw virtual key polling), window-scoped on macOS/Linux. |
@@ -70,17 +73,14 @@
 ALFRED's architecture is organized into clean, modular layers discovered dynamically at runtime:
 
 ```
-Mark-LIV/
+ALFRED-MK-II/
 ├── main.py                     # Main execution loop, Gemini Live WebSocket, audio streams, tool router
-├── ui.py                       # PyQt6 HUD interface, holographic avatar, audio visualizer, drawer settings
+├── ui.py                       # Tactical Batcave CRT HUD interface, audio visualizer, drawer settings
 ├── setup.py                    # OS-aware package and dependency installer
 ├── core/
 │   ├── prompt.txt              # Master persona directives, execution rules & Heavenly Restriction
 │   ├── action_loader.py        # Dynamic action discovery, parameter validation & Heavenly Restriction guard
 │   ├── plugin_loader.py        # Drop-in plugin discovery, sandboxing & isolation
-│   ├── avatar.py               # Software QPainter head renderer, lighting & expression rig
-│   ├── avatar_mesh.py          # MediaPipe 3D canonical facial geometry builder
-│   ├── viseme.py               # Unicode articulatory transcription to mouth shapes
 │   ├── echo.py                 # Device-calibrated acoustic echo cancellation guard
 │   ├── hotkey.py               # Global / local Push-to-Talk chord interceptor
 │   ├── undo.py                 # Stack-based reversible action journal
@@ -127,7 +127,7 @@ Mark-LIV/
 ### 1. Prerequisites
 * **Operating System**: Windows 10/11, macOS, or Linux.
 * **Python**: `3.11`, `3.12`, or `3.13`.
-* **Hardware**: Working microphone and speakers. *(No dedicated GPU required — avatar runs on software rendering).*
+* **Hardware**: Working microphone and speakers. *(No dedicated GPU required — Batcave CRT interface runs on lightweight software rendering).*
 * **API Key**: Free Gemini API Key from [Google AI Studio](https://aistudio.google.com/).
 
 ### 2. Setup & Installation
@@ -177,7 +177,7 @@ python main.py
 ```
 
 * **Voice Selection**: Choose between `Charon`, `Puck`, `Aoede`, `Fenrir`, or `Kore` in the UI settings drawer without restarting.
-* **Hue Wheel & Colors**: Customize the HUD theme live from the palette drawer; the software avatar dynamically updates its ambient lighting to match.
+* **Hue Wheel & Colors**: Customize the HUD theme live from the palette drawer; the Batcave tactical interface dynamically updates its CRT glow and accents to match.
 * **Memory Management**: Open **⚙ → 🧠 MEMORY** to inspect everything ALFRED knows about you, or delete specific items in one click.
 
 ---
@@ -203,8 +203,21 @@ This codebase is indexed with a full **GraphRAG Knowledge Graph** located in `gr
 ## 👤 Author & Credits
 
 * **Lead Architect & Creator:** **ADITYA MANOJ**
+* **Original Creator & Core Inspiration:** **[FatihMakes](https://github.com/FatihMakes)** — creator of [Mark-LIV](https://github.com/FatihMakes/Mark-LIV)
 * **Project:** ALFRED-MK-II (Wayne Protocol Edition)
 * **License:** [Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/)
 
 ---
+
+## 🙏 Special Thanks & Acknowledgements
+
+> ### 🌟 Big Shoutout & Gratitude to [FatihMakes](https://github.com/FatihMakes)!
+> A massive thank you to **FatihMakes** for developing the original **[Mark-LIV](https://github.com/FatihMakes/Mark-LIV)** project! 
+> 
+> The initial codebase, architecture vision, and creative inspiration for this entire assistant originated from his phenomenal open-source work. Huge respect and credit to him for laying the foundation.
+> 
+> 👉 **Original Repository:** [https://github.com/FatihMakes/Mark-LIV](https://github.com/FatihMakes/Mark-LIV) ⭐
+
+---
 *Built with precision for autonomy, performance, and security.*
+

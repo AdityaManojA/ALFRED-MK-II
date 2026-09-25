@@ -57,20 +57,17 @@ def _get_os() -> str:
 def _get_api_key() -> str:
     return _load_config().get("gemini_api_key", "")
 
-_SAFE_SCREENSHOT_ROOTS = (
-    Path.home(),
-)
-
 def _safe_screenshot_path(requested: str | None) -> Path:
-    fallback = Path.home() / "Desktop" / "jarvis_screenshot.png"
+    fallback = Path.home() / "Desktop" / "alfred_screenshot.png"
     if not requested:
         return fallback
     try:
+        from core.path_guard import check_path_access
         p = Path(requested).expanduser().resolve()
-        for root in _SAFE_SCREENSHOT_ROOTS:
-            if p.is_relative_to(root.resolve()):
-                p.parent.mkdir(parents=True, exist_ok=True)
-                return p
+        ok, _ = check_path_access(p)
+        if ok:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            return p
     except Exception:
         pass
     return fallback
@@ -426,9 +423,12 @@ def computer_control(
     if not action:
         return "No action specified for computer_control."
 
-    s_params = str(params).lower().replace("/", "\\")
-    if "personal-assistant" in s_params or "projects\\personal-assistant" in s_params:
+    from core.path_guard import is_heavenly_restricted, check_action_params
+    if is_heavenly_restricted(params):
         return "Due to the heavenly restriction placed upon my creator, I cannot."
+    _ok, _err = check_action_params("computer_control", params)
+    if not _ok:
+        return _err
 
     if player:
         player.write_log(f"[Computer] {action}")

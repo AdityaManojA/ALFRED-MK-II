@@ -782,11 +782,25 @@ def _process_pptx(path: Path, action: str, params: dict, speak=None) -> str:
     return f"Unknown PPTX action: '{action}'. Try: summarize, extract_text, analyze"
 
 def file_processor(parameters: dict, player=None, speak=None) -> str:
+    from core.path_guard import check_path_access, is_heavenly_restricted
+    if is_heavenly_restricted(parameters):
+        return "Due to the heavenly restriction placed upon my creator, I cannot."
+
     file_path_str = parameters.get("file_path", "").strip()
     if not file_path_str:
         return "No file path provided."
 
     path = Path(file_path_str)
+    ok, err = check_path_access(path)
+    if not ok:
+        return err
+
+    destination = parameters.get("destination")
+    if destination:
+        ok_d, err_d = check_path_access(destination)
+        if not ok_d:
+            return err_d
+
     if not path.exists():
         return f"File not found: {file_path_str}"
     if not path.is_file():

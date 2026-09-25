@@ -90,28 +90,16 @@ def _restore_from_trash(original: Path) -> str:
             f"automatically, but it is there and can be restored by hand.")
 
 
-_SAFE_ROOTS: list[Path] = [
-    Path.home(),
-    Path(__file__).resolve().parent.parent,
-]
-
-if _OS == "Windows":
-    import string
-    for _letter in string.ascii_uppercase:
-        _drv = Path(f"{_letter}:\\")
-        if _drv.exists():
-            _SAFE_ROOTS.append(_drv)
+from core.path_guard import (
+    is_safe_path as _guard_is_safe_path,
+    check_path_access,
+    is_heavenly_restricted,
+)
 
 def _is_safe_path(target: Path) -> bool:
-    """Is the given path inside _SAFE_ROOTS? If not, reject the operation."""
-    try:
-        resolved = target.resolve()
-        return any(
-            resolved == root.resolve() or resolved.is_relative_to(root.resolve())
-            for root in _SAFE_ROOTS
-        )
-    except Exception:
-        return False
+    """Is the given path permitted? Enforces C: drive (Desktop/Documents only), D: drive (safe except Personal-Assistant), and E: drive."""
+    return _guard_is_safe_path(target)
+
 
 def _get_desktop() -> Path:
     if _OS == "Linux":
@@ -498,7 +486,7 @@ def find_files(name: str = "", extension: str = "",
         return f"Search error: {e}"
 
 
-def get_largest_files(path: str = "downloads", count: int = 10) -> str:
+def get_largest_files(path: str = "desktop", count: int = 10) -> str:
     count = min(count, 50)  # maksimum 50
     try:
         search_path = _resolve_path(path)
@@ -531,7 +519,7 @@ def get_largest_files(path: str = "downloads", count: int = 10) -> str:
         return f"Error: {e}"
 
 
-def get_disk_usage(path: str = "home") -> str:
+def get_disk_usage(path: str = "desktop") -> str:
     try:
         target = _resolve_path(path)
         usage  = shutil.disk_usage(target)
@@ -719,25 +707,7 @@ def explore_folder(path_str: str) -> str:
 
 
 def _is_restricted_path(p) -> bool:
-    if not p:
-        return False
-    s = str(p).strip().lower().replace("/", "\\")
-    targets = [
-        r"d:\projects\personal-assistant",
-        r"projects\personal-assistant",
-        r"personal-assistant",
-    ]
-    for t in targets:
-        if t in s:
-            return True
-    try:
-        res = Path(str(p)).resolve()
-        restricted = Path(r"D:\Projects\Personal-Assistant").resolve()
-        if res == restricted or restricted in res.parents:
-            return True
-    except Exception:
-        pass
-    return False
+    return is_heavenly_restricted(p)
 
 
 def file_controller(
@@ -752,8 +722,17 @@ def file_controller(
     name   = params.get("name", "")
     dest   = params.get("destination", "")
 
+    # Check Heavenly Restriction first
     if _is_restricted_path(path) or _is_restricted_path(name) or _is_restricted_path(dest):
         return "Due to the heavenly restriction placed upon my creator, I cannot."
+
+    # Validate path and destination against C: drive and drive access restrictions
+    for p_val in (path, dest):
+        if p_val and str(p_val).lower().strip() not in ("desktop", "documents"):
+            _target = _resolve_path(str(p_val))
+            _ok, _err = check_path_access(_target)
+            if not _ok:
+                return _err
 
     if player:
         player.write_log(f"[file] {action} {name or path}")

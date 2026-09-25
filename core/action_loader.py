@@ -67,30 +67,12 @@ class ActionRecord:
     scheduling: Optional[str] = None   # None = the API's default (WHEN_IDLE)
 
 
+from core.path_guard import is_heavenly_restricted, check_action_params
+
+
 def _is_heavenly_restricted_params(val) -> bool:
-    if val is None:
-        return False
-    if isinstance(val, dict):
-        return any(_is_heavenly_restricted_params(v) for v in val.values())
-    if isinstance(val, (list, tuple, set)):
-        return any(_is_heavenly_restricted_params(v) for v in val)
-    s = str(val).strip().lower().replace("/", "\\")
-    targets = [
-        r"d:\projects\personal-assistant",
-        r"projects\personal-assistant",
-        r"personal-assistant",
-    ]
-    for t in targets:
-        if t in s:
-            return True
-    try:
-        p = Path(str(val)).resolve()
-        restricted = Path(r"D:\Projects\Personal-Assistant").resolve()
-        if p == restricted or restricted in p.parents:
-            return True
-    except Exception:
-        pass
-    return False
+    return is_heavenly_restricted(val)
+
 
 
 class ActionRegistry:
@@ -126,8 +108,9 @@ class ActionRegistry:
         rec = self._actions.get(name)
         if rec is None or not rec.valid:
             return f"Action '{name}' is not available."
-        if _is_heavenly_restricted_params(parameters):
-            return "Due to the heavenly restriction placed upon my creator, I cannot."
+        _ok, _err = check_action_params(name, parameters)
+        if not _ok:
+            return _err
         try:
             return _call_handler(rec.handler, parameters, ctx or {}) or "Done."
         except Exception as e:
