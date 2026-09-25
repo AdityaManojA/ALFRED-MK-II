@@ -64,21 +64,32 @@ API_FILE   = CONFIG_DIR / "api_keys.json"
 
 class TronScoreBackgroundPlayer(QObject):
     """
-    Plays 'The Son of Flynn' (From TRON Legacy Score) continuously on loop.
-    Default volume: 20% (0.20).
-    When ALFRED speaks, automatically ducks volume to 10% (0.10).
-    When ALFRED stops speaking, smoothly restores volume back to 20% (0.20).
+    Background music audio engine.
+    Plays background score continuously on loop (default: 'The Son of Flynn' TRON Legacy Score).
+    Default volume: 10% (0.10).
+    When ALFRED speaks, automatically ducks volume to 5% (0.05).
+    When ALFRED stops speaking, smoothly restores volume back to 10% (0.10).
+    Supports loading, adding, switching, and updating custom music files.
     """
-    NORMAL_VOL = 0.20
-    DUCKED_VOL = 0.10
+    NORMAL_VOL = 0.10
+    DUCKED_VOL = 0.05
+
+    track_changed          = pyqtSignal(str, str)          # (stem, path)
+    playback_state_changed = pyqtSignal(bool)              # is_playing
+    ducked_state_changed   = pyqtSignal(bool, float)       # (is_ducked, target_vol)
+    playlist_updated       = pyqtSignal(list)              # list of track paths
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._target_vol = self.NORMAL_VOL
-        self._current_vol = self.NORMAL_VOL
+        self._target_vol         = self.NORMAL_VOL
+        self._current_vol        = self.NORMAL_VOL
+        self._is_speaking_ducked = False
+        self._is_paused          = False
 
         self._player: QMediaPlayer | None = None
-        self._audio: QAudioOutput | None = None
+        self._audio: QAudioOutput | None  = None
+        self._current_path: Path | None   = None
+        self._playlist: list[Path]        = []
 
         if not _HAS_QT_MULTIMEDIA:
             print("[Audio] QtMultimedia not available — background score disabled.")
@@ -88,7 +99,10 @@ class TronScoreBackgroundPlayer(QObject):
         self._fade_timer.setInterval(20)
         self._fade_timer.timeout.connect(self._step_fade)
 
-        # Locate track in project root or parent workspace
+        self._init_playlist()
+
+    def _init_playlist(self):
+        # 1. Discover default candidates
         _candidates = [
             BASE_DIR / "The Son of Flynn (From TRON Legacy Score).mp3",
             Path(__file__).resolve().parent / "The Son of Flynn (From TRON Legacy Score).mp3",
@@ -96,26 +110,98 @@ class TronScoreBackgroundPlayer(QObject):
             Path(r"d:\Projects\Personal-Assistant\Mark-LIV\The Son of Flynn (From TRON Legacy Score).mp3"),
             Path(r"d:\Projects\Alfred-Mark-II\The Son of Flynn (From TRON Legacy Score).mp3"),
         ]
-        track_path = next((p for p in _candidates if p.exists()), None)
+        default_track = next((p for p in _candidates if p.exists()), None)
+        if default_track:
+            self._playlist.append(default_track)
 
-        if track_path:
+        # 2. Load saved playlist from config
+        cfg_file = CONFIG_DIR / "music_playlist.json"
+        last_track_str = None
+        if cfg_file.exists():
             try:
-                self._player = QMediaPlayer(self)
-                self._audio = QAudioOutput(self)
-                self._player.setAudioOutput(self._audio)
-                self._audio.setVolume(self.NORMAL_VOL)
-                self._player.setSource(QUrl.fromLocalFile(str(track_path.resolve())))
-                self._player.setLoops(QMediaPlayer.Loops.Infinite)
-                self._player.play()
-                print(f"[Audio] Tron Legacy background score started ({track_path.name}) at 20% volume.")
+                data = json.loads(cfg_file.read_text(encoding="utf-8"))
+                for p_str in data.get("tracks", []):
+                    p = Path(p_str)
+                    if p.exists() and p not in self._playlist:
+                        self._playlist.append(p)
+                last_track_str = data.get("current_track")
             except Exception as e:
-                print(f"[Audio] Could not start Tron background score: {e}")
-        else:
-            print("[Audio] Tron background score mp3 not found in workspace.")
+                print(f"[Audio] Error loading music_playlist.json: {e}")
+
+        # Choose initial track
+        initial_track = None
+        if last_track_str:
+            p = Path(last_track_str)
+            if p.exists():
+                initial_track = p
+        if not initial_track and self._playlist:
+            initial_track = self._playlist[0]
+
+        if initial_track:
+            self.load_track(initial_track, auto_play=True)
+
+    def _save_playlist_config(self):
+        try:
+            CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+            cfg_file = CONFIG_DIR / "music_playlist.json"
+            data = {
+                "current_track": str(self._current_path.resolve()) if self._current_path else "",
+                "tracks": [str(p.resolve()) for p in self._playlist if p.exists()],
+            }
+            cfg_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        except Exception as e:
+            print(f"[Audio] Error saving music_playlist.json: {e}")
+
+    def load_track(self, path: Path | str, auto_play: bool = True) -> bool:
+        path = Path(path)
+        if not path.exists():
+            print(f"[Audio] Track not found: {path}")
+            return False
+
+        if path not in self._playlist:
+            self._playlist.append(path)
+            self.playlist_updated.emit(self._playlist)
+
+        self._current_path = path
+
+        try:
+            if not self._player:
+                self._player = QMediaPlayer(self)
+                self._audio  = QAudioOutput(self)
+                self._player.setAudioOutput(self._audio)
+                self._player.setLoops(QMediaPlayer.Loops.Infinite)
+
+            self._audio.setVolume(self._current_vol)
+            self._player.setSource(QUrl.fromLocalFile(str(path.resolve())))
+            if auto_play and not self._is_paused:
+                self._player.play()
+                self.playback_state_changed.emit(True)
+
+            print(f"[Audio] Loaded background track ({path.name}) at {int(self.NORMAL_VOL*100)}% volume.")
+            self.track_changed.emit(path.stem, str(path.resolve()))
+            self._save_playlist_config()
+            return True
+        except Exception as e:
+            print(f"[Audio] Error loading track {path.name}: {e}")
+            return False
+
+    def add_and_play(self, path: Path | str):
+        p = Path(path)
+        if p.exists():
+            if p not in self._playlist:
+                self._playlist.append(p)
+                self.playlist_updated.emit(self._playlist)
+            self._is_paused = False
+            self.load_track(p, auto_play=True)
 
     def set_ducked(self, ducked: bool):
-        """Duck to 10% when speaking, restore to 20% when idle/listening."""
-        self._target_vol = self.DUCKED_VOL if ducked else self.NORMAL_VOL
+        """Duck to 5% when speaking, restore to 10% when idle/listening."""
+        self._is_speaking_ducked = ducked
+        if self._is_paused:
+            self._target_vol = 0.0
+        else:
+            self._target_vol = self.DUCKED_VOL if ducked else self.NORMAL_VOL
+        self.ducked_state_changed.emit(ducked, self._target_vol)
         if self._fade_timer and not self._fade_timer.isActive():
             self._fade_timer.start()
 
@@ -125,14 +211,74 @@ class TronScoreBackgroundPlayer(QObject):
                 self._fade_timer.stop()
             return
         diff = self._target_vol - self._current_vol
-        if abs(diff) < 0.005:
+        if abs(diff) < 0.002:
             self._current_vol = self._target_vol
             self._audio.setVolume(self._current_vol)
             self._fade_timer.stop()
         else:
-            step = 0.015 if diff > 0 else -0.015
+            step = 0.005 if diff > 0 else -0.005
             self._current_vol += step
             self._audio.setVolume(max(0.0, min(1.0, self._current_vol)))
+
+    def toggle_play(self):
+        if not self._player:
+            return
+        if self._is_paused:
+            self.play()
+        else:
+            self.pause()
+
+    def play(self):
+        if not self._player:
+            return
+        self._is_paused = False
+        self._player.play()
+        self._target_vol = self.DUCKED_VOL if self._is_speaking_ducked else self.NORMAL_VOL
+        if self._fade_timer and not self._fade_timer.isActive():
+            self._fade_timer.start()
+        self.playback_state_changed.emit(True)
+
+    def pause(self):
+        if not self._player:
+            return
+        self._is_paused = True
+        self._target_vol = 0.0
+        if self._fade_timer and not self._fade_timer.isActive():
+            self._fade_timer.start()
+        self._player.pause()
+        self.playback_state_changed.emit(False)
+
+    def next_track(self):
+        if not self._playlist:
+            return
+        try:
+            curr_idx = self._playlist.index(self._current_path) if self._current_path in self._playlist else -1
+            nxt_idx = (curr_idx + 1) % len(self._playlist)
+            self.load_track(self._playlist[nxt_idx], auto_play=True)
+        except Exception:
+            pass
+
+    def prev_track(self):
+        if not self._playlist:
+            return
+        try:
+            curr_idx = self._playlist.index(self._current_path) if self._current_path in self._playlist else 0
+            prev_idx = (curr_idx - 1 + len(self._playlist)) % len(self._playlist)
+            self.load_track(self._playlist[prev_idx], auto_play=True)
+        except Exception:
+            pass
+
+    def is_playing(self) -> bool:
+        return (not self._is_paused) and (self._player is not None)
+
+    def current_track_name(self) -> str:
+        return self._current_path.name if self._current_path else "NO TRACK"
+
+    def current_track_stem(self) -> str:
+        return self._current_path.stem if self._current_path else "NO TRACK"
+
+    def playlist(self) -> list[Path]:
+        return list(self._playlist)
 
     def stop(self):
         try:
@@ -2088,7 +2234,348 @@ class MetricBar(QWidget):
         p.setPen(val_pen)
         p.drawText(QRectF(0, 4, W - 9, 18), Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, self._text)
 
-        p.end()
+# ── Tactical Audio Player Widgets (Bottom-Left Cyber Media Deck) ──────────────
+
+class _EqualizerBarsWidget(QWidget):
+    """Mini animated cyber audio wave visualizer."""
+    def __init__(self, engine: TronScoreBackgroundPlayer, parent=None):
+        super().__init__(parent)
+        self._engine = engine
+        self.setFixedSize(18, 14)
+        self._tick = 0
+        self._tmr = QTimer(self)
+        self._tmr.timeout.connect(self._step)
+        self._tmr.start(50)
+
+    def _step(self):
+        if self._engine.is_playing() and self.isVisible():
+            self._tick += 1
+            self.update()
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        if not p.isActive():
+            return
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        W, H = self.width(), self.height()
+        bar_w = 2.5
+        spacing = 1.2
+        is_p = self._engine.is_playing()
+        main_c = qcol(C.PRI)
+
+        for i in range(4):
+            x = 1.0 + i * (bar_w + spacing)
+            if is_p:
+                h = 3.0 + 8.0 * abs(math.sin(self._tick * 0.25 + i * 1.1))
+            else:
+                h = 2.5
+            y = H - h - 1.0
+            p.fillRect(QRectF(x, y, bar_w, h), QBrush(main_c))
+
+
+class TacticalAudioPlayerWidget(QWidget):
+    """
+    Bottom-Left Cyber Tactical Audio Player Widget.
+    Styled matching the HUD / Batcave / Beyond UI theme with sharp 2px corners,
+    live visualizer equalizer bars, volume badge (10% normal, 5% ducked during speech),
+    track dropdown, and an Add/Update music file button.
+    """
+    def __init__(self, audio_engine: TronScoreBackgroundPlayer, parent=None):
+        super().__init__(parent)
+        self._engine = audio_engine
+        self.setFixedHeight(126)
+        self.setMinimumWidth(160)
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(6, 6, 6, 6)
+        lay.setSpacing(4)
+
+        # ── 1. Top Header Row: Animated EQ + Title + Volume Pill ───────────
+        top_row = QHBoxLayout()
+        top_row.setContentsMargins(0, 0, 0, 0)
+        top_row.setSpacing(4)
+
+        self._eq_widget = _EqualizerBarsWidget(self._engine)
+        top_row.addWidget(self._eq_widget)
+
+        self._hdr_lbl = QLabel("AUDIO CORE")
+        self._hdr_lbl.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=1.0))
+        self._hdr_lbl.setStyleSheet(f"color: {C.PRI}; background: transparent; border: none;")
+        top_row.addWidget(self._hdr_lbl)
+
+        top_row.addStretch()
+
+        self._vol_badge = QLabel("10%")
+        self._vol_badge.setFont(mono_font(6, QFont.Weight.Bold))
+        self._vol_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._vol_badge.setFixedHeight(16)
+        self._update_badge(False, 0.10)
+        top_row.addWidget(self._vol_badge)
+
+        lay.addLayout(top_row)
+
+        # ── 2. Track Title Row ─────────────────────────────────────────────
+        self._track_lbl = QLabel(self._engine.current_track_stem())
+        self._track_lbl.setFont(mono_font(7, QFont.Weight.Bold))
+        self._track_lbl.setStyleSheet(f"""
+            QLabel {{
+                color: {C.TEXT};
+                background: rgba(0, 0, 0, 0.25);
+                border: 1px solid {C.BORDER_A};
+                border-radius: 2px;
+                padding: 2px 4px;
+            }}
+        """)
+        self._track_lbl.setToolTip(self._engine.current_track_name())
+        lay.addWidget(self._track_lbl)
+
+        # ── 3. Track Selector Dropdown + [ + LOAD ] Row ───────────────────
+        sel_row = QHBoxLayout()
+        sel_row.setContentsMargins(0, 0, 0, 0)
+        sel_row.setSpacing(4)
+
+        self._combo = QComboBox()
+        self._combo.setFont(mono_font(6, QFont.Weight.Normal))
+        self._combo.setFixedHeight(22)
+        self._combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self._refresh_combo()
+        self._combo.currentIndexChanged.connect(self._on_combo_changed)
+        sel_row.addWidget(self._combo)
+
+        self._load_btn = QPushButton("+ LOAD")
+        self._load_btn.setFont(mono_font(6, QFont.Weight.Bold))
+        self._load_btn.setFixedHeight(22)
+        self._load_btn.setFixedWidth(50)
+        self._load_btn.setToolTip("Add or update music files (MP3, WAV, OGG, M4A, FLAC)")
+        self._load_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: rgba(0, 240, 255, 0.08);
+                color: {C.PRI};
+                border: 1px solid {C.BORDER_B};
+                border-radius: 2px;
+                padding: 0 4px;
+            }}
+            QPushButton:hover {{
+                background: {C.PRI};
+                color: #05060a;
+                border: 1px solid {C.PRI};
+            }}
+            QPushButton:pressed {{
+                background: {C.PRI_DIM};
+                color: #ffffff;
+            }}
+        """)
+        self._load_btn.clicked.connect(self._on_load_clicked)
+        sel_row.addWidget(self._load_btn)
+
+        lay.addLayout(sel_row)
+
+        # ── 4. Playback Controls Row: [ ⏮ ] [ ⏯ ] [ ⏭ ] [ 🔁 ] ─────────────
+        ctl_row = QHBoxLayout()
+        ctl_row.setContentsMargins(0, 0, 0, 0)
+        ctl_row.setSpacing(4)
+
+        btn_style = f"""
+            QPushButton {{
+                background: {C.PANEL};
+                color: {C.TEXT_MED};
+                border: 1px solid {C.BORDER_A};
+                border-radius: 2px;
+                font-size: 10px;
+            }}
+            QPushButton:hover {{
+                color: #ffffff;
+                border-color: {C.PRI};
+                background: rgba(142, 155, 255, 0.12);
+            }}
+            QPushButton:pressed {{
+                background: {C.PRI_DIM};
+                color: #05060a;
+            }}
+        """
+
+        self._btn_prev = QPushButton("⏮")
+        self._btn_prev.setFixedHeight(22)
+        self._btn_prev.setStyleSheet(btn_style)
+        self._btn_prev.setToolTip("Previous track")
+        self._btn_prev.clicked.connect(self._engine.prev_track)
+        ctl_row.addWidget(self._btn_prev)
+
+        self._btn_play = QPushButton("⏸" if self._engine.is_playing() else "▶")
+        self._btn_play.setFixedHeight(22)
+        self._btn_play.setStyleSheet(f"""
+            QPushButton {{
+                background: rgba(78, 242, 187, 0.08);
+                color: {C.GREEN};
+                border: 1px solid rgba(78, 242, 187, 0.45);
+                border-radius: 2px;
+                font-size: 10px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background: {C.GREEN};
+                color: #05060a;
+                border: 1px solid {C.GREEN};
+            }}
+            QPushButton:pressed {{
+                background: {C.GREEN_D};
+                color: #ffffff;
+            }}
+        """)
+        self._btn_play.setToolTip("Play / Pause background music")
+        self._btn_play.clicked.connect(self._on_toggle_play)
+        ctl_row.addWidget(self._btn_play)
+
+        self._btn_next = QPushButton("⏭")
+        self._btn_next.setFixedHeight(22)
+        self._btn_next.setStyleSheet(btn_style)
+        self._btn_next.setToolTip("Next track")
+        self._btn_next.clicked.connect(self._engine.next_track)
+        ctl_row.addWidget(self._btn_next)
+
+        self._btn_loop = QPushButton("🔁")
+        self._btn_loop.setFixedHeight(22)
+        self._btn_loop.setFixedWidth(24)
+        self._btn_loop.setStyleSheet(f"""
+            QPushButton {{
+                background: rgba(0, 240, 255, 0.10);
+                color: {C.PRI};
+                border: 1px solid {C.PRI};
+                border-radius: 2px;
+                font-size: 9px;
+            }}
+        """)
+        self._btn_loop.setToolTip("Continuous Loop (Always Active)")
+        ctl_row.addWidget(self._btn_loop)
+
+        lay.addLayout(ctl_row)
+
+        # Connect signals
+        self._engine.track_changed.connect(self._on_track_changed)
+        self._engine.playback_state_changed.connect(self._on_playback_state_changed)
+        self._engine.ducked_state_changed.connect(self._on_ducked_state_changed)
+        self._engine.playlist_updated.connect(self._on_playlist_updated)
+
+    def _update_badge(self, is_ducked: bool, vol: float):
+        if not self._engine.is_playing():
+            self._vol_badge.setText("PAUSED")
+            self._vol_badge.setStyleSheet(f"""
+                color: {C.TEXT_DIM};
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid {C.BORDER};
+                border-radius: 2px;
+                padding: 1px 4px;
+            """)
+        elif is_ducked:
+            self._vol_badge.setText("DUCK 5%")
+            self._vol_badge.setStyleSheet("""
+                color: #ff5577;
+                background: rgba(255, 85, 119, 0.15);
+                border: 1px solid #ff5577;
+                border-radius: 2px;
+                padding: 1px 4px;
+            """)
+        else:
+            pct = int(vol * 100)
+            self._vol_badge.setText(f"{pct}%")
+            self._vol_badge.setStyleSheet(f"""
+                color: {C.GREEN};
+                background: rgba(78, 242, 187, 0.08);
+                border: 1px solid rgba(78, 242, 187, 0.45);
+                border-radius: 2px;
+                padding: 1px 4px;
+            """)
+
+    def _refresh_combo(self):
+        self._combo.blockSignals(True)
+        self._combo.clear()
+        plist = self._engine.playlist()
+        curr_idx = 0
+        for idx, p in enumerate(plist):
+            self._combo.addItem(p.stem, str(p.resolve()))
+            if self._engine._current_path and p.resolve() == self._engine._current_path.resolve():
+                curr_idx = idx
+        if plist:
+            self._combo.setCurrentIndex(curr_idx)
+        self._combo.setStyleSheet(f"""
+            QComboBox {{
+                background: {C.PANEL};
+                color: {C.TEXT};
+                border: 1px solid {C.BORDER_A};
+                border-radius: 2px;
+                padding: 1px 4px;
+            }}
+            QComboBox:hover {{ border-color: {C.PRI}; }}
+            QComboBox::drop-down {{ border: none; width: 12px; }}
+            QComboBox QAbstractItemView {{
+                background: {C.PANEL};
+                color: {C.TEXT};
+                border: 1px solid {C.BORDER_A};
+                selection-background-color: {C.PRI_DIM};
+                selection-color: #ffffff;
+            }}
+        """)
+        self._combo.blockSignals(False)
+
+    def _on_combo_changed(self, idx: int):
+        plist = self._engine.playlist()
+        if 0 <= idx < len(plist):
+            self._engine.load_track(plist[idx], auto_play=True)
+
+    def _on_load_clicked(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Audio File (Looping Background Score)",
+            str(Path.cwd()),
+            "Audio Files (*.mp3 *.wav *.ogg *.m4a *.flac);;All Files (*.*)",
+        )
+        if file_path:
+            self._engine.add_and_play(file_path)
+
+    def _on_track_changed(self, stem: str, path: str):
+        self._track_lbl.setText(stem)
+        self._track_lbl.setToolTip(path)
+        self._refresh_combo()
+        self._update_badge(self._engine._is_speaking_ducked, self._engine.NORMAL_VOL)
+
+    def _on_playback_state_changed(self, is_playing: bool):
+        self._btn_play.setText("⏸" if is_playing else "▶")
+        self._update_badge(self._engine._is_speaking_ducked, self._engine.NORMAL_VOL)
+        if hasattr(self, "_eq_widget") and self._eq_widget:
+            self._eq_widget.update()
+
+    def _on_ducked_state_changed(self, is_ducked: bool, target_vol: float):
+        self._update_badge(is_ducked, target_vol)
+
+    def _on_playlist_updated(self, _):
+        self._refresh_combo()
+
+    def _on_toggle_play(self):
+        self._engine.toggle_play()
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        if not p.isActive():
+            return
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        W, H = self.width(), self.height()
+
+        p.fillRect(self.rect(), qcol(C.PANEL2))
+        p.setPen(QPen(qcol(C.BORDER_A), 1))
+        p.drawRect(QRectF(1, 1, W - 2, H - 2))
+
+        # Cyber corner brackets
+        arm = 5.0
+        p.setPen(QPen(qcol(C.PRI), 1.2))
+        p.drawLine(QLineF(3, 3, 3 + arm, 3))
+        p.drawLine(QLineF(3, 3, 3, 3 + arm))
+        p.drawLine(QLineF(W - 3, 3, W - 3 - arm, 3))
+        p.drawLine(QLineF(W - 3, 3, W - 3, 3 + arm))
+        p.drawLine(QLineF(3, H - 3, 3 + arm, H - 3))
+        p.drawLine(QLineF(3, H - 3, 3, H - 3 - arm))
+        p.drawLine(QLineF(W - 3, H - 3, W - 3 - arm, H - 3))
+        p.drawLine(QLineF(W - 3, H - 3, W - 3, H - 3 - arm))
+
 
 class LogWidget(QTextEdit):
     _sig = pyqtSignal(str)
@@ -4768,6 +5255,9 @@ class MainWindow(QMainWindow):
         body.setContentsMargins(0, 0, 0, 0)
         body.setSpacing(0)
 
+        # Background score player (10% default, ducks to 5% when Alfred speaks)
+        self._bg_music = TronScoreBackgroundPlayer(self)
+
         self._left_panel = self._build_left_panel()
         body.addWidget(self._left_panel, stretch=0)
 
@@ -4895,8 +5385,7 @@ class MainWindow(QMainWindow):
         sc_intr = QShortcut(QKeySequence("Escape"), self)
         sc_intr.activated.connect(self._do_interrupt)
 
-        # TRON Legacy background score player (20% default, ducks to 10% when Alfred speaks)
-        self._bg_music = TronScoreBackgroundPlayer(self)
+        # Background score player initialized earlier before left panel for UI docking
 
     def _show_camera_frame(self, img_bytes: bytes):
         """Slot — display camera preview overlay (main thread)."""
@@ -5528,14 +6017,42 @@ class MainWindow(QMainWindow):
         self._date_lbl.setText(time.strftime("%a %d %b %Y"))
 
     def _build_left_panel(self) -> QWidget:
-        w = QWidget()
-        w.setFixedWidth(_LEFT_W)
-        w.setStyleSheet(f"""
+        container = QWidget()
+        container.setFixedWidth(_LEFT_W)
+        container.setStyleSheet(f"""
             QWidget {{
                 background: {C.PANEL};
                 border-right: 1px solid {C.BORDER_A};
             }}
         """)
+        container_lay = QVBoxLayout(container)
+        container_lay.setContentsMargins(0, 0, 0, 0)
+        container_lay.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setStyleSheet(f"""
+            QScrollArea {{ background: transparent; border: none; }}
+            QScrollBar:vertical {{
+                background: {C.PANEL};
+                width: 4px;
+                margin: 0;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {C.BORDER_B};
+                min-height: 20px;
+                border-radius: 2px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0;
+            }}
+        """)
+
+        w = QWidget()
+        w.setStyleSheet("background: transparent; border: none;")
         lay = QVBoxLayout(w)
         lay.setContentsMargins(8, 8, 8, 8)
         lay.setSpacing(8)
@@ -5582,8 +6099,15 @@ class MainWindow(QMainWindow):
         meta_row.addWidget(self._proc_lbl)
         lay.addLayout(meta_row)
 
-        lay.addStretch()
-        return w
+        lay.addSpacing(4)
+
+        # 5. Dedicated Cyber Audio Player Widget (Bottom-Left Deck)
+        self._audio_player = TacticalAudioPlayerWidget(self._bg_music, parent=w)
+        lay.addWidget(self._audio_player)
+
+        scroll.setWidget(w)
+        container_lay.addWidget(scroll)
+        return container
 
     def _build_right_panel(self) -> QWidget:
         w = QWidget()
