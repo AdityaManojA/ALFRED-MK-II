@@ -5255,20 +5255,22 @@ class MainWindow(QMainWindow):
         else:
             self._bar_tmp.set_value(0, "N/A")
 
-        try:
-            boot_t  = psutil.boot_time()
-            elapsed = time.time() - boot_t
-            h = int(elapsed // 3600)
-            m = int((elapsed % 3600) // 60)
-            self._uptime_lbl.setText(f"UP  {h:02d}:{m:02d}")
-        except Exception:
-            self._uptime_lbl.setText("UP  --:--")
+        if hasattr(self, "_uptime_lbl"):
+            try:
+                boot_t  = psutil.boot_time()
+                elapsed = time.time() - boot_t
+                h = int(elapsed // 3600)
+                m = int((elapsed % 3600) // 60)
+                self._uptime_lbl.setText(f"UP  {h:02d}:{m:02d}")
+            except Exception:
+                self._uptime_lbl.setText("UP  --:--")
 
-        try:
-            proc_count = len(psutil.pids())
-            self._proc_lbl.setText(f"PROC  {proc_count}")
-        except Exception:
-            self._proc_lbl.setText("PROC  --")
+        if hasattr(self, "_proc_lbl"):
+            try:
+                proc_count = len(psutil.pids())
+                self._proc_lbl.setText(f"PROC  {proc_count}")
+            except Exception:
+                self._proc_lbl.setText("PROC  --")
 
 
     def _build_header(self) -> QWidget:
@@ -5410,6 +5412,19 @@ class MainWindow(QMainWindow):
         for bar in [self._bar_cpu, self._bar_mem, self._bar_net, self._bar_gpu, self._bar_tmp]:
             bar.setFixedHeight(34)
             lay.addWidget(bar)
+
+        meta_row = QHBoxLayout()
+        meta_row.setContentsMargins(4, 2, 4, 2)
+        self._uptime_lbl = QLabel("UP  --:--")
+        self._uptime_lbl.setFont(mono_font(7, QFont.Weight.Normal, letter_spacing=0.8))
+        self._uptime_lbl.setStyleSheet(f"color: {C.MUTED}; background: transparent; border: none;")
+        self._proc_lbl = QLabel("PROC  --")
+        self._proc_lbl.setFont(mono_font(7, QFont.Weight.Normal, letter_spacing=0.8))
+        self._proc_lbl.setStyleSheet(f"color: {C.MUTED}; background: transparent; border: none;")
+        meta_row.addWidget(self._uptime_lbl)
+        meta_row.addStretch()
+        meta_row.addWidget(self._proc_lbl)
+        lay.addLayout(meta_row)
 
         lay.addStretch()
         return w
