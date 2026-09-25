@@ -2449,19 +2449,19 @@ class _DropCanvas(QWidget):
         pad  = 6
         rect = QRectF(pad, pad, W - pad * 2, H - pad * 2)
 
-        bg_col = QColor(0, 26, 36, 220) if z._drag_over else (QColor(0, 18, 26, 200) if z._hovering else QColor(4, 14, 25, 200))
+        bg_col = qcol(C.PANEL2, 220) if z._drag_over else (qcol(C.PANEL, 200) if z._hovering else qcol(C.BG, 200))
         p.setBrush(QBrush(bg_col)); p.setPen(Qt.PenStyle.NoPen)
-        p.drawRoundedRect(rect, 10, 10)
+        p.drawRoundedRect(rect, 2, 2)
 
         if z._current_file:   border_col = qcol(C.GREEN, 200)
         elif z._drag_over:    border_col = qcol(C.PRI, 230)
         elif z._hovering:     border_col = qcol(C.BORDER_B, 200)
-        else:                 border_col = QColor(0, 240, 255, 45)
+        else:                 border_col = qcol(C.BORDER_A, 160)
 
         pen = QPen(border_col, 1.2, Qt.PenStyle.DashLine)
         pen.setDashOffset(z._dash_offset)
         p.setPen(pen); p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawRoundedRect(rect, 10, 10)
+        p.drawRoundedRect(rect, 2, 2)
 
         if z._current_file:   self._paint_file(p, W, H)
         elif z._drag_over:    self._paint_drag_over(p, W, H)
@@ -5487,9 +5487,9 @@ class MainWindow(QMainWindow):
         self._drop_zone.file_selected.connect(self._on_file_selected)
         lay.addWidget(self._drop_zone)
 
-        self._file_hint = QLabel("Drop surveillance captures, audio logs or telemetry evidence")
-        self._file_hint.setFont(mono_font(6, letter_spacing=0.3))
-        self._file_hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        self._file_hint = QLabel("DROP EVIDENCE // SURVEILLANCE CAPTURES // TELEMETRY LOGS")
+        self._file_hint.setFont(mono_font(6, letter_spacing=0.8))
+        self._file_hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent; padding-left: 2px;")
         self._file_hint.setWordWrap(True)
         lay.addWidget(self._file_hint)
 
@@ -5497,20 +5497,25 @@ class MainWindow(QMainWindow):
         lay.addLayout(self._build_input_row())
 
         # 5. Emergency Purge Button
-        self._interrupt_btn = QPushButton("⛔  ABORT DIRECTIVE  [ESC]")
-        self._interrupt_btn.setFixedHeight(34)
-        self._interrupt_btn.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=1.0))
+        self._interrupt_btn = QPushButton("[ ■ ]  ABORT ACTIVE DIRECTIVE  //  ESC")
+        self._interrupt_btn.setFixedHeight(32)
+        self._interrupt_btn.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=1.2))
         self._interrupt_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._interrupt_btn.setStyleSheet(f"""
             QPushButton {{
-                background: rgba(255, 42, 85, 0.12);
-                color: #ff4466;
+                background: rgba(255, 42, 85, 0.08);
+                color: #ff5577;
                 border: 1px solid rgba(255, 42, 85, 0.45);
-                border-radius: 6px;
+                border-radius: 2px;
+                padding: 0 8px;
             }}
             QPushButton:hover {{
-                background: rgba(255, 42, 85, 0.28);
+                background: #ff2a55;
                 border: 1px solid #ff2a55;
+                color: #05060a;
+            }}
+            QPushButton:pressed {{
+                background: #cc1840;
                 color: #ffffff;
             }}
         """)
@@ -5730,15 +5735,18 @@ class MainWindow(QMainWindow):
         self._quick_drawer.setGeometry(16, 56, _W, self._quick_drawer.sizeHint().height())
 
     def _build_input_row(self) -> QHBoxLayout:
-        row = QHBoxLayout(); row.setSpacing(8)
+        row = QHBoxLayout(); row.setSpacing(6)
         self._input = QLineEdit()
-        self._input.setPlaceholderText("Issue directive to Alfred / Query Batcomputer…")
-        self._input.setFont(tech_font(9))
+        self._input.setPlaceholderText("INPUT DIRECTIVE // QUERY BATCOMPUTER...")
+        self._input.setFont(mono_font(8, letter_spacing=0.6))
         self._input.setFixedHeight(34)
         self._input.setStyleSheet(f"""
             QLineEdit {{
-                background: rgba(255, 255, 255, 0.05); color: {C.WHITE};
-                border: 1px solid rgba(0, 240, 255, 0.22); border-radius: 10px; padding: 4px 12px;
+                background: {C.PANEL2};
+                color: {C.WHITE};
+                border: 1px solid {C.BORDER_A};
+                border-radius: 2px;
+                padding: 4px 10px;
             }}
             QLineEdit:focus {{
                 border: 1px solid {C.PRI};
@@ -5748,23 +5756,26 @@ class MainWindow(QMainWindow):
         self._input.returnPressed.connect(self._send)
         row.addWidget(self._input)
 
-        send = QPushButton("DEPLOY ▸")
+        send = QPushButton("TRANSMIT ❯")
         send.setFixedHeight(34)
-        send.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=0.8))
+        send.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=1.0))
         send.setCursor(Qt.CursorShape.PointingHandCursor)
         send.setStyleSheet(f"""
             QPushButton {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(0, 240, 255, 0.35), stop:1 rgba(0, 180, 255, 0.20));
-                color: {C.WHITE};
-                border: 1px solid {C.PRI}; border-radius: 10px;
+                background: rgba(0, 240, 255, 0.12);
+                color: {C.PRI};
+                border: 1px solid {C.PRI};
+                border-radius: 2px;
                 padding: 0 14px;
             }}
             QPushButton:hover {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(0, 240, 255, 0.55), stop:1 rgba(0, 210, 255, 0.35));
-                border-color: #ffffff;
+                background: {C.PRI};
+                border: 1px solid {C.PRI};
+                color: #040e19;
             }}
             QPushButton:pressed {{
-                background: rgba(0, 240, 255, 0.25);
+                background: {C.PRI_DIM};
+                color: #040e19;
             }}
         """)
         send.clicked.connect(self._send)
@@ -6967,41 +6978,45 @@ class MainWindow(QMainWindow):
 
     def _style_mute_btn(self):
         if self._muted:
-            self._mute_btn.setText("🔇  SILENCE PROTOCOL: ACTIVE // COWL MUTED")
-            self._mute_btn.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=1.0))
+            self._mute_btn.setText("[ ⊘ ]  SILENCE PROTOCOL : ENGAGED  //  COWL MUTED")
+            self._mute_btn.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=1.0))
             self._mute_btn.setStyleSheet(f"""
                 QPushButton {{
-                    background: rgba(255, 51, 102, 0.12);
+                    background: rgba(255, 51, 102, 0.08);
                     color: #ff3366;
-                    border: 1px solid rgba(255, 51, 102, 0.40);
-                    border-radius: 9px;
+                    border: 1px solid rgba(255, 51, 102, 0.45);
+                    border-radius: 2px;
+                    padding: 0 8px;
                 }}
                 QPushButton:hover {{
-                    background: rgba(255, 51, 102, 0.25);
-                    border-color: #ff5577;
-                    color: #ffffff;
+                    background: #ff3366;
+                    border: 1px solid #ff3366;
+                    color: #05060a;
                 }}
                 QPushButton:pressed {{
-                    background: rgba(255, 51, 102, 0.40);
+                    background: #cc2244;
+                    color: #ffffff;
                 }}
             """)
         else:
-            self._mute_btn.setText("🦇  ACOUSTIC SENSORS: ONLINE // COWL PROTOCOL")
-            self._mute_btn.setFont(tech_font(8, QFont.Weight.Bold, letter_spacing=1.0))
+            self._mute_btn.setText("[ ◈ ]  ACOUSTIC SENSORS : ONLINE  //  COWL PROTOCOL")
+            self._mute_btn.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=1.0))
             self._mute_btn.setStyleSheet(f"""
                 QPushButton {{
-                    background: rgba(0, 255, 157, 0.10);
+                    background: rgba(78, 242, 187, 0.08);
                     color: {C.GREEN};
-                    border: 1px solid rgba(0, 255, 157, 0.35);
-                    border-radius: 9px;
+                    border: 1px solid rgba(78, 242, 187, 0.45);
+                    border-radius: 2px;
+                    padding: 0 8px;
                 }}
                 QPushButton:hover {{
-                    background: rgba(0, 255, 157, 0.22);
-                    border-color: #00ff9d;
-                    color: #ffffff;
+                    background: {C.GREEN};
+                    border: 1px solid {C.GREEN};
+                    color: #05060a;
                 }}
                 QPushButton:pressed {{
-                    background: rgba(0, 255, 157, 0.35);
+                    background: {C.GREEN_D};
+                    color: #ffffff;
                 }}
             """)
 
