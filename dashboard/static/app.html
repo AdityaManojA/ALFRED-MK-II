@@ -198,6 +198,17 @@
       background: rgba(255, 0, 55, 0.12);
       box-shadow: 0 0 14px rgba(255, 0, 55, 0.25);
     }
+    body[data-theme="beyond"] .btn-clear-chat {
+      background: rgba(255, 0, 55, 0.12);
+      border-color: rgba(255, 0, 55, 0.45);
+      color: #ff0037;
+    }
+    body[data-theme="beyond"] .btn-clear-chat:hover {
+      background: rgba(255, 0, 55, 0.3);
+      border-color: #ff0037;
+      color: #ffffff;
+      box-shadow: 0 0 16px rgba(255, 0, 55, 0.6);
+    }
     body[data-theme="beyond"] .intel-card {
       background: rgba(20, 3, 7, 0.88);
       border-left: 3px solid #ff0037;
@@ -924,6 +935,31 @@
       box-shadow: 0 0 14px rgba(0, 240, 255, 0.2);
     }
 
+    .btn-clear-chat {
+      background: rgba(255, 42, 85, 0.08);
+      border: 1px solid rgba(255, 42, 85, 0.35);
+      color: #ff5577;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .btn-clear-chat:hover {
+      border-color: #ff2a55;
+      color: #ffffff;
+      background: rgba(255, 42, 85, 0.22);
+      box-shadow: 0 0 14px rgba(255, 42, 85, 0.4);
+      transform: translateY(-1px);
+    }
+    .btn-clear-chat:active { transform: scale(0.96); }
+
     /* ── MIC BUTTON ── */
     #mic-btn {
       background: rgba(255, 255, 255, 0.05);
@@ -1093,9 +1129,9 @@
         font-size: 13px;
         min-width: 0 !important; /* Essential: prevents input from forcing buttons off screen */
       }
-      .btn-attach, #mic-btn {
+      .btn-attach, #mic-btn, .btn-clear-chat {
         padding: 9px 10px;
-        font-size: 15px;
+        font-size: 14px;
         border-radius: 10px;
       }
       .btn {
@@ -1184,6 +1220,7 @@
 
   <footer>
     <input id="inp" placeholder="Transmit directive to ALFRED…" autocomplete="off">
+    <button class="btn-clear-chat" id="clear-chat-btn" onclick="doClearChat()" title="Wipe conversation">✕</button>
     <label class="btn-attach" for="file-inp" title="Send file">📎</label>
     <input type="file" id="file-inp" multiple accept="*/*" style="display:none">
     <button id="mic-btn" onclick="doMic()" title="Voice command">🎤</button>
@@ -1932,7 +1969,9 @@
       try {
         const m = JSON.parse(e.data);
         const mType = (m.type || '').toLowerCase();
-        if (mType === 'log' || mType === 'chat' || mType === 'message') {
+        if (mType === 'clear_chat') {
+          clearChatFeed();
+        } else if (mType === 'log' || mType === 'chat' || mType === 'message') {
           append(m.speaker || m.role || 'alfred', m.text || m.content || '');
         } else if (mType === 'telemetry') {
           appendTelemetry(m.tag, m.icon, m.text);
@@ -2165,6 +2204,35 @@
     function doWake() {
       sys('Sending wake command…');
       _authFetch('/api/wake', { method: 'POST' });
+    }
+
+    function clearChatFeed() {
+      const feed = document.getElementById('feed');
+      if (feed) {
+        feed.innerHTML = `
+          <div class="feed-welcome" id="feed-welcome">
+            <div class="welcome-badge">◈ UPLINK SYNCHRONIZED</div>
+            <div class="welcome-title">ALFRED QUANTUM TERMINAL</div>
+            <div class="welcome-sub">CONVERSATION WIPED // SYSTEM READY</div>
+            <div class="welcome-hints">
+              <span>🔊 TTS Vocalizer Active</span>
+              <span>•</span>
+              <span>⚡ Realtime Neural Link</span>
+              <span>•</span>
+              <span>🛡️ AES-256</span>
+            </div>
+          </div>
+        `;
+      }
+      sys('Conversation wiped clean.');
+    }
+
+    function doClearChat() {
+      clearChatFeed();
+      _authFetch('/api/clear-chat', { method: 'POST' }).catch(err => {
+        console.error('Clear chat error:', err);
+      });
+      toast('Conversation Cleared');
     }
 
     document.getElementById('inp').addEventListener('keydown', e => {

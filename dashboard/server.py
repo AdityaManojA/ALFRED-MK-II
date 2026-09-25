@@ -466,6 +466,7 @@ class DashboardServer:
         self._command_queue               = asyncio.Queue()
         self._wake_callback               = None
         self._connect_callback            = None
+        self._clear_chat_callback          = None
         self._pending_keys: dict[str, float] = {}
         self._device_sessions: dict[str, dict] = {}  # device_token → {session_key}
         self._phone_audio_queue: asyncio.Queue    = asyncio.Queue(maxsize=200)
@@ -520,12 +521,18 @@ class DashboardServer:
     def set_connect_callback(self, fn) -> None:
         self._connect_callback = fn
 
+    def set_clear_chat_callback(self, fn) -> None:
+        self._clear_chat_callback = fn
+
     # ── broadcast ────────────────────────────────────────────────────────
 
     async def broadcast(self, msg: dict) -> None:
-        self._history.append(msg)
-        if len(self._history) > 300:
-            self._history = self._history[-300:]
+        if msg.get("type") == "clear_chat":
+            self._history.clear()
+        else:
+            self._history.append(msg)
+            if len(self._history) > 300:
+                self._history = self._history[-300:]
         dead: set[WebSocket] = set()
         for ws in list(self._clients):
             try:
@@ -705,6 +712,19 @@ class DashboardServer:
                 return JSONResponse({"error": "Unauthorized"}, status_code=401)
             if self._wake_callback:
                 self._wake_callback()
+            return JSONResponse({"ok": True})
+
+        @app.post("/api/clear-chat")
+        async def clear_chat_ep(req: Request):
+            if not _auth(req):
+                return JSONResponse({"error": "Unauthorized"}, status_code=401)
+            self._history.clear()
+            await self.broadcast({"type": "clear_chat"})
+            if self._clear_chat_callback:
+                try:
+                    self._clear_chat_callback()
+                except Exception as e:
+                    print(f"[Dashboard] clear_chat_callback error: {e}")
             return JSONResponse({"ok": True})
 
         # ── Phone mic real-time audio → Gemini Live ──────────────────────────

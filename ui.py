@@ -2194,6 +2194,15 @@ class LogWidget(QTextEdit):
             self.ensureCursorVisible()
             QTimer.singleShot(20, self._next)
 
+    def clear_log(self):
+        """Cancel any in-flight typing animation, drain the queue, and clear the display."""
+        self._tmr.stop()
+        self._queue.clear()
+        self._typing = False
+        self._text = ""
+        self._pos = 0
+        self.clear()
+
 
 class NotesTerminalWidget(QWidget):
     """
@@ -4694,10 +4703,12 @@ class MainWindow(QMainWindow):
     _quiz_hide_sig  = pyqtSignal()
     _review_sig     = pyqtSignal(str, str, object, object)  # document review payload
     _intel_note_sig = pyqtSignal(str, str, str)  # (title, content, note_type)
+    _clear_log_sig  = pyqtSignal()
 
     def __init__(self, face_path: str):
         super().__init__()
         self._face_path = face_path
+        self.on_clear_chat     = None
 
         # Load customization from config
         _cfg = _read_full_config()
@@ -4861,6 +4872,7 @@ class MainWindow(QMainWindow):
         self._quiz_hide_sig.connect(self._hide_quiz)
         self._review_sig.connect(self._show_review)
         self._intel_note_sig.connect(self._on_intel_note_received)
+        self._clear_log_sig.connect(self._on_clear_chat)
         self._cam_stop = threading.Event()
 
         # Camera preview overlay (child of central widget, positioned in resizeEvent)
@@ -5922,6 +5934,33 @@ class MainWindow(QMainWindow):
         """)
         send.clicked.connect(self._send)
         row.addWidget(send)
+
+        self._clear_btn = QPushButton("✕ CLEAR")
+        self._clear_btn.setFixedHeight(34)
+        self._clear_btn.setFont(mono_font(7, QFont.Weight.Bold, letter_spacing=1.0))
+        self._clear_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._clear_btn.setToolTip("Wipe chat log and conversation history")
+        self._clear_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: rgba(255, 42, 85, 0.08);
+                color: #ff5577;
+                border: 1px solid rgba(255, 42, 85, 0.45);
+                border-radius: 2px;
+                padding: 0 12px;
+            }}
+            QPushButton:hover {{
+                background: #ff2a55;
+                border: 1px solid #ff2a55;
+                color: #05060a;
+            }}
+            QPushButton:pressed {{
+                background: #cc1840;
+                color: #ffffff;
+            }}
+        """)
+        self._clear_btn.clicked.connect(self.clear_chat)
+        row.addWidget(self._clear_btn)
+
         return row
 
     def _build_content_panel(self) -> QWidget:
@@ -7185,6 +7224,20 @@ class MainWindow(QMainWindow):
         if self.on_text_command:
             threading.Thread(target=self.on_text_command, args=(txt,), daemon=True).start()
 
+    def _on_clear_chat(self):
+        """Thread-safe UI slot: wipe chat display."""
+        self._log.clear_log()
+        self._log.append_log("SYS: Conversation history and chat log wiped.")
+
+    def clear_chat(self):
+        """Wipe chat log and trigger any registered callback (e.g. backend/mobile sync)."""
+        self._on_clear_chat()
+        if self.on_clear_chat:
+            try:
+                self.on_clear_chat()
+            except Exception as e:
+                print(f"[UI] on_clear_chat error: {e}")
+
     def _apply_state(self, state: str):
         self.hud.state    = state
         self.hud.speaking = (state == "SPEAKING")
@@ -7404,6 +7457,18 @@ class JarvisUI:
 
     def write_log(self, text: str):
         self._win._log_sig.emit(text)
+
+    def clear_chat(self):
+        """Thread-safe: wipe the on-screen conversation chat feed."""
+        self._win._clear_log_sig.emit()
+
+    @property
+    def on_clear_chat(self):
+        return self._win.on_clear_chat
+
+    @on_clear_chat.setter
+    def on_clear_chat(self, fn):
+        self._win.on_clear_chat = fn
 
     def add_intel_note(self, title: str, content: str, note_type: str = "note"):
         """Thread-safe: post special note, research link, or structured data to the dedicated Notes Terminal."""

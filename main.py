@@ -416,6 +416,15 @@ TOOL_DECLARATIONS = [
         "parameters": {"type": "OBJECT", "properties": {}, "required": []}
     },
     {
+        "name": "clear_chat",
+        "description": (
+            "Wipes or clears the current conversation history, chat log, and terminal screen. "
+            "Call this tool whenever the user asks to clear the chat, wipe conversation, "
+            "clear history, wipe the terminal, or start a clean session."
+        ),
+        "parameters": {"type": "OBJECT", "properties": {}, "required": []}
+    },
+    {
         "name": "manage_monitor",
         "description": (
             "Add, remove, or list background monitoring topics. "
@@ -621,6 +630,7 @@ class JarvisLive:
         self.ui.on_interrupt      = self.interrupt
         self.ui.on_voice_change   = self._on_voice_change     # voice picker → rebuild session
         self.ui.on_audio_device_change = self._on_audio_device_change
+        self.ui.on_clear_chat     = self._on_gui_clear_chat
         self._reconnect_event: asyncio.Event | None = None
         self._reconnect_keep = True   # False → next rebuild drops the resumption handle
 
@@ -892,6 +902,23 @@ class JarvisLive:
             ),
             self._loop
         )
+
+    def _on_gui_clear_chat(self):
+        """Called when user clicks the CLEAR button in desktop GUI."""
+        self._session_log.clear()
+        if self._dashboard and self._loop:
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    self._dashboard.broadcast({"type": "clear_chat"}),
+                    self._loop
+                )
+            except Exception:
+                pass
+
+    def _on_remote_clear_chat(self):
+        """Called when phone/dashboard sends a clear-chat directive."""
+        self._session_log.clear()
+        self.ui.clear_chat()
 
     def _tail_active(self) -> bool:
         """True while the speakers may still be finishing our last sentence."""
@@ -1277,6 +1304,13 @@ class JarvisLive:
                     result = ("Monitoring: " + ", ".join(topics)) if topics else "No topics are being monitored."
                 else:
                     result = "Specify action (add/remove/list) and a topic."
+
+            elif name == "clear_chat":
+                self.ui.clear_chat()
+                self._session_log.clear()
+                if self._dashboard:
+                    await self._dashboard.broadcast({"type": "clear_chat"})
+                result = "Conversation history and on-screen chat feed have been wiped clean, sir."
 
             elif name == "shutdown_jarvis":
                 self.ui.write_log("SYS: Shutdown requested.")
@@ -2161,6 +2195,7 @@ class JarvisLive:
             from dashboard.server import DashboardServer
             self._dashboard = DashboardServer()
             self._dashboard.set_connect_callback(self._on_phone_connected)
+            self._dashboard.set_clear_chat_callback(self._on_remote_clear_chat)
             asyncio.create_task(self._dashboard.serve())
             # Runs for the whole lifetime, not just inside an active session
             asyncio.create_task(self._process_dashboard_commands())
