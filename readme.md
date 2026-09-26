@@ -45,6 +45,26 @@
 * **Dual Interface Matrices**: Instant toggle between the 3D Holographic Head and the Quantum Reactor Matrix.
 * **Dedicated Intel & Notes Terminal**: Built-in `intel_notes` module for tactical mission memos and persistent scratchpad storage.
 
+### 🎵 6. Dynamic Background Audio Matrix & Voice-Ducking Sound Engine
+* **Ambient Sound Dock**: Integrated persistent background audio player positioned at the bottom-left of the HUD with support for loading custom soundtracks and seamless looping.
+* **Intelligent Speech Ducking**: Monitors real-time TTS audio generation. Background music defaults to 10% gain and automatically ducks down to 5% whenever ALFRED speaks, returning smoothly upon turn completion.
+* **Audio-Reactive Waveform Controls**: Replaced generic play/pause buttons with high-tech graphic equalizer lines that animate in sync with active playback.
+* **Popup Gain Slider HUD**: Fast-access floating volume slider allowing millisecond-level audio adjustment directly on click without needing to open deep configuration menus.
+
+### 🛡️ 7. Real-Time Insignia & Chassis Hot-Swapper
+* **Multi-Insignia Catalog**: Dynamically scans and registers brand assets from `Icons/` (including Batman Beyond, Arkham Asylum, Classic Bat, White Bat, and Tactical Stealth).
+* **Live Runtime Reconfiguration**: Hot-swaps the active application window icon, Windows taskbar insignia, and system tray in real time upon voice request (*"update the app icon to Batman Beyond"*) or via the Customise Assistant drawer.
+* **Automatic Shortcut Synchronization**: Dynamically generates and updates `A.L.F.R.E.D.lnk` on the desktop without interrupting the running session.
+
+### 📋 8. Interactive Conversational Briefing Customizer
+* **Natural-Language Briefing Directive Management**: Saying *"update my daily briefing"* triggers an interactive alignment protocol where ALFRED captures specific additions, topics, news sources, or location shifts.
+* **Persistent Memory Commits**: Automatically structures and commits preferences to long-term memory under `briefing_preference`, adapting all future morning briefings dynamically across restarts.
+
+### ⚙️ 9. Enterprise OS Integration & Automation Hardening
+* **Dual-Registry Windows Autostart**: Robust autostart management querying and updating `ALFRED_AI` with backward-compatible legacy key cleanup.
+* **Native Task Scheduler Migration**: Scheduled routines (`ALFREDReminder_*`, `ALFRED_GameUpdater`) registered via native OS schedulers with cross-platform launchd / cron support.
+* **Persistent Browser Session Bridges**: Multi-tier automation directory resolution (`~/.alfred_profiles` with legacy fallback) preventing user session and authentication dropouts.
+
 ---
 
 ## 🚀 Core Capabilities
@@ -52,8 +72,8 @@
 | Capability | Architecture & Description |
 |---|---|
 | 🎙️ **Real-Time Voice Intelligence** | Bidirectional low-latency voice streaming via **Gemini 3.1 Flash Live**. Talk naturally in any language with sub-second time-to-first-word. |
-| 🦇 **Batcave Tactical CRT Interface** | 3D rotating vector wireframe globe, real-time waveform telemetry, and tactical hex matrix stream rendered with zero GPU driver dependencies. |
-| 👄 **Formant & Audio Reactivity** | Real-time audio waveform spectrum analysis and RMS power levels reactive to speech and system states. |
+| 🧑‍🎤 **Holographic Software Avatar** | 3D human head rendered via pure software math (`QPainter`) with zero GPU driver dependencies. Breathes, blinks, looks away while thinking, and glances at new content. |
+| 👄 **Formant & Viseme Lip-Sync** | ~50 mouth shapes/sec derived from real-time FFT audio formants (F1 openness, F2 spread/round) combined with Unicode articulatory decomposition across 20+ languages. |
 | 👁️ **Multimodal Vision Engine** | Single-frame on-demand screen and webcam capture (`screen_processor.py`). Captures are labelled by source and injected directly into the Gemini exchange. |
 | 🖥️ **Full Computer Control** | Direct desktop automation (`computer_control.py`): keystrokes, hotkeys, mouse clicks/drags, window focus, clipboard read/write, AI element location (`screen_find`). |
 | 🎚️ **Global Push-to-Talk** | Hold `Ctrl+Space` to talk. Mic remains completely closed otherwise. Truly global on Windows (30 Hz raw virtual key polling), window-scoped on macOS/Linux. |
@@ -75,12 +95,15 @@ ALFRED's architecture is organized into clean, modular layers discovered dynamic
 ```
 ALFRED-MK-II/
 ├── main.py                     # Main execution loop, Gemini Live WebSocket, audio streams, tool router
-├── ui.py                       # Tactical Batcave CRT HUD interface, audio visualizer, drawer settings
+├── ui.py                       # PyQt6 HUD interface, holographic avatar, audio visualizer, drawer settings
 ├── setup.py                    # OS-aware package and dependency installer
 ├── core/
 │   ├── prompt.txt              # Master persona directives, execution rules & Heavenly Restriction
 │   ├── action_loader.py        # Dynamic action discovery, parameter validation & Heavenly Restriction guard
 │   ├── plugin_loader.py        # Drop-in plugin discovery, sandboxing & isolation
+│   ├── avatar.py               # Software QPainter head renderer, lighting & expression rig
+│   ├── avatar_mesh.py          # MediaPipe 3D canonical facial geometry builder
+│   ├── viseme.py               # Unicode articulatory transcription to mouth shapes
 │   ├── echo.py                 # Device-calibrated acoustic echo cancellation guard
 │   ├── hotkey.py               # Global / local Push-to-Talk chord interceptor
 │   ├── undo.py                 # Stack-based reversible action journal
@@ -103,6 +126,8 @@ ALFRED-MK-II/
 │   ├── code_helper.py          # Code analysis and generation
 │   ├── send_message.py         # WhatsApp and Telegram message dispatcher
 │   ├── youtube_video.py        # YouTube search and playback control
+│   ├── update_app_icon.py      # Real-time window, taskbar & chassis insignia switcher
+│   ├── update_daily_briefing.py# Conversational briefing preference and directive customizer
 │   ├── game_updater.py         # Steam and Epic Games library updater
 │   └── weather_report.py       # Localized live meteorological reports
 ├── dashboard/                  # Quantum Mobile Remote Server
@@ -127,7 +152,7 @@ ALFRED-MK-II/
 ### 1. Prerequisites
 * **Operating System**: Windows 10/11, macOS, or Linux.
 * **Python**: `3.11`, `3.12`, or `3.13`.
-* **Hardware**: Working microphone and speakers. *(No dedicated GPU required — Batcave CRT interface runs on lightweight software rendering).*
+* **Hardware**: Working microphone and speakers. *(No dedicated GPU required — avatar runs on software rendering).*
 * **API Key**: Free Gemini API Key from [Google AI Studio](https://aistudio.google.com/).
 
 ### 2. Setup & Installation
@@ -177,7 +202,7 @@ python main.py
 ```
 
 * **Voice Selection**: Choose between `Charon`, `Puck`, `Aoede`, `Fenrir`, or `Kore` in the UI settings drawer without restarting.
-* **Hue Wheel & Colors**: Customize the HUD theme live from the palette drawer; the Batcave tactical interface dynamically updates its CRT glow and accents to match.
+* **Hue Wheel & Colors**: Customize the HUD theme live from the palette drawer; the software avatar dynamically updates its ambient lighting to match.
 * **Memory Management**: Open **⚙ → 🧠 MEMORY** to inspect everything ALFRED knows about you, or delete specific items in one click.
 
 ---
@@ -185,7 +210,7 @@ python main.py
 ## 📊 Knowledge Graph (`graphify`)
 
 This codebase is indexed with a full **GraphRAG Knowledge Graph** located in `graphify-out/`:
-* **1,722 nodes** & **3,371 relationships** mapped across 103 semantic functional communities.
+* **1,866 nodes** & **3,691 relationships** mapped across 102 semantic functional communities.
 * Interactive navigable graph visualization: [`graphify-out/graph.html`](file:///d:/Projects/Personal-Assistant/Mark-LIV/graphify-out/graph.html).
 * Exhaustive architectural breakdown: [`graphify-out/GRAPH_REPORT.md`](file:///d:/Projects/Personal-Assistant/Mark-LIV/graphify-out/GRAPH_REPORT.md).
 
