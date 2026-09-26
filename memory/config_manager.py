@@ -130,16 +130,24 @@ def save_push_to_talk_enabled(enabled: bool) -> None:
     _save_flag("push_to_talk_enabled", enabled)
 
 
-HUD_STYLES = ("globe",)
+HUD_STYLES = ("face", "core")
 
 
 def get_hud_style() -> str:
-    """The Batcave HUD centrepiece: 3D vector wireframe globe and tactical waveforms."""
-    return "globe"
+    """Which centrepiece the HUD draws: the animated head, or the reactor core.
+
+    Taste, not capability — both render in the same software painter and cost
+    about the same. Defaults to the head because that is what MARK LIV shipped
+    with; anyone who preferred the older look can switch back in ⚙ and the
+    choice survives a restart.
+    """
+    v = str(load_api_keys().get("hud_style", "face")).strip().lower()
+    return v if v in HUD_STYLES else "face"
 
 
 def save_hud_style(style: str) -> None:
-    _save_flag("hud_style", "globe")
+    s = str(style or "").strip().lower()
+    _save_flag("hud_style", s if s in HUD_STYLES else "face")
 
 
 # ── Live-session tuning ──────────────────────────────────────────────────────
@@ -374,3 +382,20 @@ def save_plugin_enabled(plugin_name: str, enabled: bool) -> None:
     plugins_cfg[plugin_name] = enabled
     data["plugins_enabled"] = plugins_cfg
     CONFIG_FILE.write_text(json.dumps(data, indent=4), encoding="utf-8")
+
+
+def get_app_icon() -> str:
+    """Return the configured app icon filename or path, or '' if default."""
+    cfg = load_api_keys()
+    return cfg.get("app_icon", "") or ""
+
+
+def save_app_icon(icon_name_or_path: str) -> None:
+    """Save the chosen app icon setting to config."""
+    ensure_config_dir()
+    data = load_api_keys()
+    data["app_icon"] = icon_name_or_path.strip()
+    try:
+        CONFIG_FILE.write_text(json.dumps(data, indent=4), encoding="utf-8")
+    except Exception as e:
+        print(f"❌ Failed to save app_icon: {e}")

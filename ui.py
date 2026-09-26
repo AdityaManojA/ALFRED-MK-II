@@ -46,7 +46,10 @@ try:
 except Exception:
     _HAS_QT_MULTIMEDIA = False
 
-HoloAvatar = None
+try:
+    from core.avatar import HoloAvatar
+except Exception:      # pragma: no cover — HUD must never die over cosmetics
+    HoloAvatar = None
 
 
 def _base_dir() -> Path:
@@ -57,6 +60,69 @@ def _base_dir() -> Path:
 BASE_DIR   = _base_dir()
 CONFIG_DIR = BASE_DIR / "config"
 API_FILE   = CONFIG_DIR / "api_keys.json"
+ICONS_DIR  = BASE_DIR / "Icons"
+
+
+def format_icon_display_name(filename: str) -> str:
+    """Format an icon file name into an authentic, sleek tactical insignia title."""
+    stem = Path(filename).stem
+    custom_names = {
+        "baticon_arlham_asylum": "Arkham Asylum",
+        "baticon_beyond": "Batman Beyond",
+        "baticon_default": "Classic Bat",
+        "baticon_white": "White Knight Bat",
+        "trasparent": "Stealth Insignia",
+        "transparent": "Stealth Insignia",
+        "batman_logo": "Wayne Crest",
+        "alfred": "Alfred Crest",
+        "alfred_bg": "Alfred Shield",
+    }
+    key = stem.lower()
+    if key in custom_names:
+        return custom_names[key]
+    cleaned = stem
+    for prefix in ("baticon_", "icon_", "bat_"):
+        if cleaned.lower().startswith(prefix):
+            cleaned = cleaned[len(prefix):]
+    cleaned = cleaned.replace("_", " ").replace("-", " ").strip()
+    return cleaned.title()
+
+
+def get_available_app_icons() -> list[dict]:
+    """Scan Icons/ and config/ for all available badges/icons."""
+    found = []
+    seen = set()
+
+    search_dirs = [ICONS_DIR, Path(__file__).resolve().parent / "Icons"]
+    for idir in search_dirs:
+        if idir.exists() and idir.is_dir():
+            for p in sorted(idir.iterdir()):
+                if p.is_file() and p.suffix.lower() in (".png", ".ico", ".jpg", ".jpeg", ".webp", ".svg"):
+                    stem_key = p.stem.lower()
+                    if stem_key not in seen:
+                        seen.add(stem_key)
+                        found.append({
+                            "name": format_icon_display_name(p.name),
+                            "path": str(p.resolve()),
+                            "filename": p.name,
+                        })
+
+    cfg_dir = BASE_DIR / "config"
+    if cfg_dir.exists():
+        for name in ("batman_logo.png", "alfred.ico", "alfred.png"):
+            cp = cfg_dir / name
+            if cp.exists():
+                stem_key = cp.stem.lower()
+                if stem_key not in seen:
+                    seen.add(stem_key)
+                    found.append({
+                        "name": format_icon_display_name(cp.name),
+                        "path": str(cp.resolve()),
+                        "filename": cp.name,
+                    })
+    return found
+
+
 
 
 class TronScoreBackgroundPlayer(QObject):
@@ -826,8 +892,25 @@ class HudCanvas(QWidget):
         self.state    = "INITIALISING"
         self._assistant_name = assistant_name
 
+        # The holographic head that fills the HUD. If it could not be imported
+        # we fall back to the old glowing core so the panel is never empty.
         self._avatar = None
-        self.hud_style = "globe"
+        if HoloAvatar is not None:
+            try:
+                self._avatar = HoloAvatar()
+            except Exception:
+                self._avatar = None
+
+        # Which centrepiece to draw. Read once here and changed live by the
+        # settings toggle; the avatar object is kept either way so switching
+        # back is instant and costs no reload.
+        try:
+            from memory.config_manager import get_hud_style
+            self.hud_style = get_hud_style() or "globe"
+        except Exception:
+            self.hud_style = "globe"
+        if self.hud_style in ("face", "core", None, ""):
+            self.hud_style = "globe"
         self._core_phase = 0.0
 
         self._tick       = 0
@@ -881,7 +964,12 @@ class HudCanvas(QWidget):
         self._tmr.start(16)
 
     def glance(self, dx: float, dy: float, hold: float = 1.1) -> None:
-        pass
+        """Ask the avatar to look somewhere for a moment (see HoloAvatar.glance)."""
+        try:
+            if self._avatar is not None:
+                self._avatar.glance(dx, dy, hold)
+        except Exception:
+            pass
 
     def push_visemes(self, frames, hop: float, at: float) -> None:
         """Thread-safe: hand over a schedule of (level, openness, width) frames.
@@ -1013,8 +1101,13 @@ class HudCanvas(QWidget):
                     + (1.4 if self.speaking else 0.0)
         self._core_phase += min(0.10, max(0.0, dt)) * _rate
 
-        # Centerpiece breathing / level reactivity
-        if True:
+        if self._avatar is not None and self.hud_style == "face":
+            self._avatar.step(dt, amp, speaking=self.speaking,
+                              muted=self.muted, state=self.state,
+                              v_open=v_open, v_wide=v_wide or 0.0,
+                              v_level=v_level, v_seq=v_seq,
+                              v_hop=(sched[2] if sched is not None else 0.02))
+        else:
             # Fallback core: slow "breathing" base target, lifted by the level.
             if now - self._last_t > (0.12 if self.speaking else 0.5):
                 if self.speaking:
@@ -1102,6 +1195,240 @@ class HudCanvas(QWidget):
         if self.state == "LISTENING":
             return qcol(C.PRI), qcol(C.GREEN)
         return qcol(C.PRI), qcol(C.PRI_DIM)
+
+    def _paint_core(self, p: QPainter, cx: float, cy: float, r: float,
+                    W: float = 0.0, H: float = 0.0):
+        """Draw the Avengers: Endgame Stark Arc Reactor at (cx, cy) with outer radius r."""
+        main, acc = self._core_colours()
+        bg = qcol(C.BG)
+        amp = self._amp_disp
+        t = self._core_phase
+        live = (self.speaking or amp > 0.04) and not self.muted
+
+        def blend(col: QColor, a: float) -> QColor:
+            k = max(0.0, min(1.0, a))
+            return QColor(int(bg.red()   + (col.red()   - bg.red())   * k),
+                          int(bg.green() + (col.green() - bg.green()) * k),
+                          int(bg.blue()  + (col.blue()  - bg.blue())  * k))
+
+        p.setBrush(Qt.BrushStyle.NoBrush)
+
+        # 1. Quantum Arc Energy Atmosphere (Deep radial multi-layer bloom)
+        lift = 1.0 + 0.95 * amp + (0.40 if self.speaking else 0.0)
+        p.setPen(Qt.PenStyle.NoPen)
+        for gr, a0 in ((r * 0.90, 0.22), (r * 0.60, 0.35), (r * 0.38, 0.55), (r * 0.20, 0.70)):
+            g = QRadialGradient(cx, cy, gr)
+            g.setColorAt(0.00, blend(main, min(0.95, a0 * lift)))
+            g.setColorAt(0.35, blend(main, min(0.95, a0 * lift * 0.55)))
+            g.setColorAt(0.70, blend(main, min(0.95, a0 * lift * 0.18)))
+            g.setColorAt(1.00, blend(main, 0.0))
+            p.setBrush(QBrush(g))
+            p.drawEllipse(QRectF(cx - gr, cy - gr, gr * 2, gr * 2))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+
+        # 2. Precision Stark Corner Reticles & Telemetry Badges
+        if W > 60 and H > 60:
+            m, arm = min(W, H) * 0.035, min(W, H) * 0.06
+            p.setPen(QPen(blend(main, 0.45), 1.4))
+            for sx, sy in ((1, 1), (-1, 1), (1, -1), (-1, -1)):
+                x = cx + sx * (W / 2 - m)
+                y = cy + sy * (H / 2 - m)
+                p.drawLine(QLineF(x, y, x - sx * arm, y))
+                p.drawLine(QLineF(x, y, x, y - sy * arm))
+                p.setPen(QPen(blend(main, 0.25), 1.0))
+                p.drawLine(QLineF(x - sx * 4, y, x - sx * 8, y))
+                p.drawLine(QLineF(x, y - sy * 4, x, y - sy * 8))
+
+            # Corner micro telemetry tags
+            f_tele = tech_font(7, QFont.Weight.Medium, letter_spacing=1.0)
+            p.setFont(f_tele)
+            p.setPen(QPen(blend(main, 0.40), 1))
+            p.drawText(QRectF(cx - W / 2 + m + 6, cy - H / 2 + m, 120, 14),
+                       Qt.AlignmentFlag.AlignLeft, "MK-II // ARC-GEN")
+            p.drawText(QRectF(cx + W / 2 - m - 126, cy - H / 2 + m, 120, 14),
+                       Qt.AlignmentFlag.AlignRight, "FREQ 142.8MHz")
+            p.drawText(QRectF(cx - W / 2 + m + 6, cy + H / 2 - m - 14, 120, 14),
+                       Qt.AlignmentFlag.AlignLeft, "FLUX: 99.8%")
+            p.drawText(QRectF(cx + W / 2 - m - 126, cy + H / 2 - m - 14, 120, 14),
+                       Qt.AlignmentFlag.AlignRight, "WAYNE ENTERPRISES")
+
+        # 3. Holographic Reticle Crosshairs with Precision Target Gaps
+        p.setPen(QPen(blend(main, 0.16), 1))
+        gap = r * 0.58
+        if W > 40:
+            p.drawLine(QLineF(cx - W / 2, cy, cx - gap, cy))
+            p.drawLine(QLineF(cx + gap, cy, cx + W / 2, cy))
+        if H > 40:
+            p.drawLine(QLineF(cx, cy - H / 2, cx, cy - gap))
+            p.drawLine(QLineF(cx, cy + gap, cx, cy + H / 2))
+
+        # 4. Concentric High-Tech Outer Rings
+        for rr, a, wid in ((1.00, 0.35, 1.2), (0.94, 0.20, 1.0), (0.86, 0.15, 1.0)):
+            rad = r * rr
+            p.setPen(QPen(blend(main, a), wid))
+            p.drawEllipse(QRectF(cx - rad, cy - rad, rad * 2, rad * 2))
+
+        # 5. Laser Calibration Graduations (72 radial ticks with 12 primary markers)
+        major, minor = [], []
+        for i in range(72):
+            ang = math.radians(i * 5.0)
+            ca, sa = math.cos(ang), math.sin(ang)
+            if i % 6 == 0:
+                major.append(QLineF(cx + ca * r * 0.88, cy + sa * r * 0.88,
+                                    cx + ca * r * 0.99, cy + sa * r * 0.99))
+            else:
+                minor.append(QLineF(cx + ca * r * 0.94, cy + sa * r * 0.94,
+                                    cx + ca * r * 0.99, cy + sa * r * 0.99))
+        p.setPen(QPen(blend(main, 0.55), 1.4))
+        p.drawLines(major)
+        p.setPen(QPen(blend(main, 0.22), 1.0))
+        p.drawLines(minor)
+
+        # 6. Cardinal Telemetry Digits [000, 090, 180, 270] on outer calibration band
+        f_card = tech_font(7, QFont.Weight.Bold, letter_spacing=0.5)
+        p.setFont(f_card)
+        p.setPen(QPen(blend(main, 0.50), 1))
+        p.drawText(QRectF(cx - 15, cy - r * 1.06, 30, 12), Qt.AlignmentFlag.AlignCenter, "000")
+        p.drawText(QRectF(cx + r * 1.01, cy - 6, 26, 12), Qt.AlignmentFlag.AlignLeft, "090")
+        p.drawText(QRectF(cx - 15, cy + r * 1.00, 30, 12), Qt.AlignmentFlag.AlignCenter, "180")
+        p.drawText(QRectF(cx - r * 1.01 - 26, cy - 6, 26, 12), Qt.AlignmentFlag.AlignRight, "270")
+
+        # 7. Segmented Rotating Nano-Aperture Ring (36 interlocking gear notches)
+        n_teeth = 36
+        aperture_r = r * 0.77
+        tooth_lines = []
+        base_rot = (t * 8.0) % 360.0
+        for i in range(n_teeth):
+            ang = math.radians(i * (360.0 / n_teeth) + base_rot)
+            ca, sa = math.cos(ang), math.sin(ang)
+            tooth_lines.append(QLineF(cx + ca * (aperture_r - 2.5), cy + sa * (aperture_r - 2.5),
+                                      cx + ca * (aperture_r + 2.5), cy + sa * (aperture_r + 2.5)))
+        p.setPen(QPen(blend(main, 0.28), 1.2))
+        p.drawLines(tooth_lines)
+
+        # 8. Smooth Kinetic Energy Arcs (Endgame Counter-Rotating Holo-Rings)
+        arc_layers = (
+            (0.965, 95,  3, +1, 14.0, acc,  0.80, 2.2),
+            (0.895, 140, 2, -1, 10.0, main, 0.50, 1.8),
+            (0.820, 60,  4, +1, 20.0, acc,  0.65, 1.5),
+            (0.740, 110, 2, -1, 15.0, main, 0.40, 1.4),
+            (0.640, 45,  5, +1, 28.0, main, 0.35, 1.2),
+            (0.560, 120, 2, -1, 18.0, acc,  0.55, 1.6),
+        )
+
+        for rr, span, count, dirn, spd, col, a, wid in arc_layers:
+            rad = r * rr
+            p.setPen(QPen(blend(col, a), wid))
+            box = QRectF(cx - rad, cy - rad, rad * 2, rad * 2)
+            base = (t * spd * dirn) % 360.0
+            step = 360.0 / count
+            for sgm in range(count):
+                start_deg = base + sgm * step
+                p.drawArc(box, int(start_deg * 16), int(span * 16))
+
+                # Glowing Orbital Nano-Pips on leading edges of primary arcs
+                if rr > 0.80:
+                    lead_rad = math.radians(start_deg + (span if dirn > 0 else 0))
+                    px = cx + math.cos(lead_rad) * rad
+                    py = cy + math.sin(lead_rad) * rad
+                    p.setPen(Qt.PenStyle.NoPen)
+                    p.setBrush(QBrush(blend(qcol(C.WHITE), 0.9)))
+                    p.drawEllipse(QPointF(px, py), 2.2, 2.2)
+                    p.setBrush(Qt.BrushStyle.NoBrush)
+
+        # 9. Quantum Audio Burst / Frequency Reactor Needles
+        n_spikes = 64
+        ring_spk = r * 0.44
+        spikes = []
+        for i in range(n_spikes):
+            ang = math.radians(i * (360.0 / n_spikes) + t * 8.0)
+            ca, sa = math.cos(ang), math.sin(ang)
+            wob = 0.5 + 0.5 * math.sin(t * 3.2 + i * 0.5)
+            idle = 0.02 + 0.015 * math.sin(t * 1.5 + i * 0.8)
+            h = r * (idle + (amp * 0.22 * wob if live else 0.0))
+            spikes.append(QLineF(cx + ca * ring_spk, cy + sa * ring_spk,
+                                 cx + ca * (ring_spk + h), cy + sa * (ring_spk + h)))
+        p.setPen(QPen(blend(acc if live else main, 0.40 + 0.55 * amp), 1.5))
+        p.drawLines(spikes)
+
+        # 10. Reactor Core Triad Magnetic Containment Nodes (Iconic Mark 85 Arc Triad)
+        tri_r = r * 0.38
+        p.setPen(QPen(blend(main, 0.65), 1.8))
+        for i in range(3):
+            c_ang = math.radians(i * 120.0 + t * 4.0)
+            ca, sa = math.cos(c_ang), math.sin(c_ang)
+            # Dual containment rails
+            p.drawLine(QLineF(cx + ca * (tri_r - 5), cy + sa * (tri_r - 5),
+                              cx + ca * (tri_r + 9), cy + sa * (tri_r + 9)))
+            # Glowing power capacitor
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QBrush(blend(acc, 0.90)))
+            p.drawEllipse(QPointF(cx + ca * (tri_r + 10), cy + sa * (tri_r + 10)), 3.0, 3.0)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(blend(main, 0.65), 1.8))
+
+        # 6 Secondary Flux Nodes
+        coil_r = r * 0.38
+        p.setPen(QPen(blend(main, 0.40), 1.2))
+        for i in range(6):
+            if i % 2 != 0:
+                c_ang = math.radians(i * 60.0 + t * 4.0)
+                ca, sa = math.cos(c_ang), math.sin(c_ang)
+                p.drawLine(QLineF(cx + ca * (coil_r - 3), cy + sa * (coil_r - 3),
+                                  cx + ca * (coil_r + 5), cy + sa * (coil_r + 5)))
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QBrush(blend(main, 0.70)))
+                p.drawEllipse(QPointF(cx + ca * (coil_r + 6), cy + sa * (coil_r + 6)), 1.8, 1.8)
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.setPen(QPen(blend(main, 0.40), 1.2))
+
+        # 11. Inner Central Quantum Core Lens
+        inner_r = r * 0.34
+        core_box = QRectF(cx - inner_r, cy - inner_r, inner_r * 2, inner_r * 2)
+
+        # Multi-stop Obsidian Glass Lens Gradient with rich inner glow
+        core_grad = QRadialGradient(cx, cy, inner_r)
+        core_grad.setColorAt(0.00, blend(main, 0.32 + 0.58 * amp))
+        core_grad.setColorAt(0.50, blend(main, 0.14 + 0.28 * amp))
+        core_grad.setColorAt(0.85, blend(qcol(C.DARK), 0.95))
+        core_grad.setColorAt(1.00, blend(main, 0.65 + 0.35 * amp))
+        p.setBrush(QBrush(core_grad))
+        p.setPen(QPen(blend(acc if live else main, 0.85), 2.0))
+        p.drawEllipse(core_box)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+
+        # Internal Quantum Hexagon Emitter Grid (faint cyber lattice inside the lens)
+        hex_pts = []
+        hex_r = inner_r * 0.65
+        for h in range(6):
+            h_ang = math.radians(h * 60.0 - t * 3.0)
+            hex_pts.append(QPointF(cx + math.cos(h_ang) * hex_r, cy + math.sin(h_ang) * hex_r))
+        p.setPen(QPen(blend(main, 0.18 + 0.15 * amp), 1.0))
+        for h in range(6):
+            p.drawLine(hex_pts[h], hex_pts[(h + 1) % 6])
+            p.drawLine(hex_pts[h], QPointF(cx, cy))
+
+        # Specular 3D glass reflection arc at top of lens
+        p.setPen(QPen(blend(qcol(C.WHITE), 0.42), 1.5))
+        p.drawArc(core_box, 35 * 16, 110 * 16)
+
+        # 12. The Assistant Designation (Crisp Laser-White Typography with Emissive Glow)
+        name = self._assistant_name or ""
+        if name:
+            space = max(1.2, inner_r * 0.05)
+            fsz = max(9, int(min(inner_r * 0.26, (inner_r * 1.8) / max(1, len(name)) * 1.5 - space)))
+            f = tech_font(fsz, QFont.Weight.Bold, letter_spacing=space)
+            p.setFont(f)
+
+            # Glow shadow for laser typography
+            p.setPen(QPen(blend(main, 0.55 + 0.40 * amp), 2))
+            p.drawText(QRectF(cx - inner_r + 1, cy - fsz + 1, inner_r * 2, fsz * 2),
+                       Qt.AlignmentFlag.AlignCenter, name)
+
+            # Laser crisp text
+            p.setPen(QPen(blend(qcol(C.WHITE), 0.92 + 0.08 * min(1.0, amp * 2)), 1))
+            p.drawText(QRectF(cx - inner_r, cy - fsz, inner_r * 2, fsz * 2),
+                       Qt.AlignmentFlag.AlignCenter, name)
 
     def _paint_crt_grid(self, p: QPainter, W: float, H: float):
         """Draw subtle background CRT coordinate grid with + crosshairs (Screenshot 2)."""
@@ -1494,10 +1821,15 @@ class HudCanvas(QWidget):
         self._paint_globe_waveforms(p, cx, cy, W, H)
 
     def _draw_custom_emblem(self, p: QPainter, cx: float, cy: float, max_w: float, max_h: float) -> bool:
-        """If a custom emblem/logo file exists in config/, draw it with smooth holographic styling."""
-        cfg_dir = Path(__file__).resolve().parent / "config"
-        for name in ("alfred_bg.png", "batman_logo.png", "hud_icon.png", "logo.png", "avatar.png", "custom_logo.png"):
-            fp = cfg_dir / name
+        """If a custom emblem/logo file exists, draw it with smooth holographic styling."""
+        target_path = getattr(self, "_custom_emblem_path", None)
+        if target_path and Path(target_path).exists():
+            candidates = [Path(target_path)]
+        else:
+            cfg_dir = Path(__file__).resolve().parent / "config"
+            candidates = [cfg_dir / name for name in ("alfred_bg.png", "batman_logo.png", "hud_icon.png", "logo.png", "avatar.png", "custom_logo.png")]
+
+        for fp in candidates:
             if fp.exists():
                 try:
                     pm = QPixmap(str(fp))
@@ -1516,6 +1848,7 @@ class HudCanvas(QWidget):
                     pass
                 break
         return False
+
 
     def paintEvent(self, _):
         p = QPainter(self)
@@ -1568,12 +1901,29 @@ class HudCanvas(QWidget):
         # 3. Optional custom watermark emblem
         self._draw_custom_emblem(p, cx, cy * 0.65, fw * 0.42, fw * 0.42)
 
-        # 4. Centerpiece Rendering - Batcave 3D Vector Globe & Tactical Waveforms
-        globe_r = min(fw * 0.35, 175.0)
-        globe_cy = cy * 0.72
-        self._paint_3d_vector_globe(p, cx, globe_cy, globe_r, W, H)
-        self._paint_globe_waveforms(p, cx, globe_cy + globe_r * 0.78, W, H)
-        self._paint_hex_matrix_stream(p, cx, globe_cy + globe_r * 0.78 + 36.0, W, H)
+        # 4. Centerpiece Rendering
+        # Globe centerpiece (Screenshot 2 + Waveforms)
+        if self.hud_style == "globe" or (self._avatar is None and self.hud_style != "core"):
+            globe_r = min(fw * 0.35, 175.0)
+            globe_cy = cy * 0.72
+            self._paint_3d_vector_globe(p, cx, globe_cy, globe_r, W, H)
+            self._paint_globe_waveforms(p, cx, globe_cy + globe_r * 0.78, W, H)
+            self._paint_hex_matrix_stream(p, cx, globe_cy + globe_r * 0.78 + 36.0, W, H)
+
+        elif self._avatar is not None and self.hud_style == "face":
+            _band_t = 12.0
+            _band_h = max(60.0, cy + fw * 0.38 - _band_t)
+            _r_head = min(fw * 0.355, _band_h / (self._avatar.SPAN + 0.08))
+            _head_cy = _band_t + (_band_h - self._avatar.SPAN * _r_head) / 2.0 + _r_head
+            self._avatar.paint(p, cx, _head_cy, _r_head, main, acc, qcol(C.BG))
+            self._paint_globe_waveforms(p, cx, cy + fw * 0.42, W, H)
+
+        else:
+            _band_t = 12.0
+            _band_h = max(60.0, cy + fw * 0.38 - _band_t)
+            _r = min(W * 0.46, _band_h / 2.0)
+            self._paint_core(p, cx, _band_t + _band_h / 2.0, _r, W, _band_h)
+            self._paint_globe_waveforms(p, cx, cy + fw * 0.42, W, H)
 
         # 5. High-Impact Status Banner (Screenshot 2)
         self._paint_status_highlight_banner(p, cx, H - 34.0, W, H)
@@ -3487,8 +3837,11 @@ class CustomizeOverlay(QWidget):
     _OW, _OH = 560, 680
 
     def __init__(self, assistant_name="Alfred", user_name="",
-                 ui_color=DEFAULT_UI_COLOR, voice="", parent=None):
+                 ui_color=DEFAULT_UI_COLOR, voice="", current_icon="", parent=None):
         super().__init__(parent)
+        self._current_icon = (current_icon or "").strip()
+        self._initial_icon = self._current_icon
+        self.on_icon_change = None
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(f"""
             CustomizeOverlay {{
@@ -3632,6 +3985,69 @@ class CustomizeOverlay(QWidget):
         self._user_input.setFixedHeight(34)
         self._user_input.setStyleSheet(_fs)
         lay.addWidget(self._user_input)
+
+        # ── Tactical Bat-Insignia & Application Icon ─────────────────────
+        lay.addWidget(_lbl("TACTICAL BAT-INSIGNIA & APPLICATION ICON", 8, bold=True, color=C.TEXT_DIM))
+        icon_sub = QLabel("SELECT CHASSIS BADGE // SYSTEM TRAY & TASKBAR ICON // REALTIME UPLINK")
+        icon_sub.setFont(tech_font(7, QFont.Weight.Medium, letter_spacing=0.8))
+        icon_sub.setStyleSheet(f"color: {C.TEXT_MUTED}; background: transparent; margin-bottom: 2px;")
+        lay.addWidget(icon_sub)
+
+        self._icon_cards: dict[str, QPushButton] = {}
+        icon_grid = QGridLayout()
+        icon_grid.setSpacing(8)
+        icon_grid.setContentsMargins(0, 0, 0, 4)
+
+        avail_icons = get_available_app_icons()
+        if not self._current_icon and avail_icons:
+            self._current_icon = avail_icons[0]["path"]
+
+        cols = 3
+        for idx, ic in enumerate(avail_icons):
+            row = idx // cols
+            col = idx % cols
+
+            btn = QPushButton()
+            btn.setFixedHeight(58)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+
+            btn_lay = QHBoxLayout(btn)
+            btn_lay.setContentsMargins(8, 6, 8, 6)
+            btn_lay.setSpacing(8)
+
+            ico_lbl = QLabel()
+            ico_lbl.setFixedSize(36, 36)
+            ico_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            ico_lbl.setStyleSheet("background: transparent;")
+            pm = QPixmap(ic["path"])
+            if not pm.isNull():
+                ico_lbl.setPixmap(pm.scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            btn_lay.addWidget(ico_lbl)
+
+            txt_box = QVBoxLayout()
+            txt_box.setSpacing(2)
+            txt_box.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+            name_lbl = QLabel(ic["name"])
+            name_lbl.setFont(mono_font(8, QFont.Weight.Bold, letter_spacing=0.4))
+            name_lbl.setStyleSheet("color: #ffffff; background: transparent;")
+            txt_box.addWidget(name_lbl)
+
+            file_lbl = QLabel(ic["filename"][:22])
+            file_lbl.setFont(tech_font(6, letter_spacing=0.2))
+            file_lbl.setStyleSheet(f"color: {C.TEXT_MUTED}; background: transparent;")
+            txt_box.addWidget(file_lbl)
+
+            btn_lay.addLayout(txt_box)
+            btn_lay.addStretch()
+
+            btn.clicked.connect(lambda _=False, p=ic["path"]: self._on_icon_picked(p))
+            self._icon_cards[ic["path"]] = btn
+            icon_grid.addWidget(btn, row, col)
+
+        lay.addLayout(icon_grid)
+        self._refresh_icon_cards()
+
 
         # ── Assistant voice — Gemini prebuilt voices ─────────────────────
         from memory.config_manager import AVAILABLE_VOICES, DEFAULT_VOICE
@@ -3816,16 +4232,56 @@ class CustomizeOverlay(QWidget):
                 return
             self._set_color(t, update_wheel=True, preview=True)
 
+    def _refresh_icon_cards(self):
+        norm_cur = Path(self._current_icon).name.lower() if self._current_icon else ""
+        for path_key, btn in self._icon_cards.items():
+            is_active = (path_key == self._current_icon) or (norm_cur and Path(path_key).name.lower() == norm_cur)
+            if is_active:
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background: rgba(0, 240, 255, 0.16);
+                        border: 1.5px solid {C.PRI};
+                        border-radius: 4px;
+                        text-align: left;
+                    }}
+                """)
+            else:
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background: {C.PANEL2};
+                        border: 1px solid {C.BORDER_A};
+                        border-radius: 4px;
+                        text-align: left;
+                    }}
+                    QPushButton:hover {{
+                        background: rgba(142, 155, 255, 0.12);
+                        border-color: {C.PRI};
+                    }}
+                """)
+
+    def _on_icon_picked(self, path: str):
+        self._current_icon = path
+        self._refresh_icon_cards()
+        if self.on_icon_change:
+            try:
+                self.on_icon_change(path)
+            except Exception as e:
+                print(f"[Icon] Realtime change error: {e}")
+
     def _cancel(self):
         # If a preview was applied, revert to the colour from launch
         if self.on_preview and self._sel_color != self._initial_color:
             self.on_preview(self._initial_color)
+        if self.on_icon_change and self._current_icon != self._initial_icon:
+            self.on_icon_change(self._initial_icon)
         self.hide()
 
     def _save(self):
         name = self._name_input.text().strip() or "Alfred"
         user = self._user_input.text().strip()
         self.saved.emit(name, user, self._sel_color or DEFAULT_UI_COLOR, self._sel_voice)
+        if self._current_icon and self.on_icon_change:
+            self.on_icon_change(self._current_icon)
         self.hide()
 
 
@@ -5203,12 +5659,22 @@ class MainWindow(QMainWindow):
             apply_ui_accent(_ui_color)
 
         self.setWindowTitle(f"{_display} — {APP_VERSION}")
-        _cfg_dir = Path(__file__).resolve().parent / "config"
-        for _ico_name in ("alfred.ico", "alfred.png", "jarvis.ico", "jarvis.png", "logo.png"):
-            _ico_file = _cfg_dir / _ico_name
-            if _ico_file.exists():
-                self.setWindowIcon(QIcon(str(_ico_file)))
-                break
+        self._current_icon_path = None
+        saved_icon = _cfg.get("app_icon", "")
+        if saved_icon and Path(saved_icon).exists():
+            self.set_app_icon(saved_icon)
+        else:
+            avail = get_available_app_icons()
+            if avail:
+                self.set_app_icon(avail[0]["path"])
+            else:
+                _cfg_dir = Path(__file__).resolve().parent / "config"
+                for _ico_name in ("alfred.ico", "alfred.png", "jarvis.ico", "jarvis.png", "logo.png"):
+                    _ico_file = _cfg_dir / _ico_name
+                    if _ico_file.exists():
+                        self.setWindowIcon(QIcon(str(_ico_file)))
+                        break
+
         self.setMinimumSize(_MIN_W, _MIN_H)
         self.resize(_DEFAULT_W, _DEFAULT_H)
 
@@ -6347,7 +6813,13 @@ class MainWindow(QMainWindow):
 
         self._refresh_talk_btns()
 
-
+        self._hud_btn = QPushButton()
+        self._hud_btn.setFixedHeight(29)
+        self._hud_btn.setFont(mono_font(8, letter_spacing=0.5))
+        self._hud_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._hud_btn.clicked.connect(self._toggle_hud_style)
+        lay.addWidget(self._hud_btn)
+        self._refresh_hud_btn()
 
         audio_btn = QPushButton("[ ☊ ]  COWL ACOUSTIC ROUTING")
         audio_btn.setFixedHeight(29)
@@ -7217,7 +7689,42 @@ class MainWindow(QMainWindow):
             else "Hold a key to talk instead of streaming the mic continuously.")
 
 
+    def _refresh_hud_btn(self):
+        from memory.config_manager import get_hud_style
+        face = get_hud_style() == "face"
+        # Neither state is "off", so both read as active — this is a choice
+        # between two things, not a switch with a disabled side.
+        style = f"""
+            QPushButton {{ background: rgba(142, 155, 255, 0.12); color: {C.PRI};
+                border: 1px solid {C.PRI}; border-radius: 2px;
+                text-align: left; padding: 0 10px; font-weight: bold; }}
+            QPushButton:hover {{ background: {C.PRI}; color: {C.DARK}; border: 1px solid {C.PRI}; }}
+            QPushButton:pressed {{ background: {C.PRI_DIM}; color: {C.DARK}; }}"""
+        self._hud_btn.setText("[ ◈ ]  HUD : HOLOGRAM AVATAR" if face
+                              else "[ ◈ ]  BATCOMPUTER TACTICAL CORE")
+        self._hud_btn.setStyleSheet(style)
+        self._hud_btn.setToolTip(
+            "An animated head that speaks your words and shows what JARVIS is "
+            "doing. Tap to switch to the reactor core."
+            if face else
+            "A reactor core that turns with the state and moves with your voice. "
+            "Tap to switch to the animated head.")
 
+    def _toggle_hud_style(self):
+        """Swap the centrepiece. Both objects stay in memory, so the change is
+        instant and switching back costs nothing."""
+        from memory.config_manager import get_hud_style, save_hud_style
+        want = "core" if get_hud_style() == "face" else "face"
+        save_hud_style(want)
+        try:
+            self.hud.hud_style = want
+            self.hud.update()
+        except Exception:
+            pass
+        self._refresh_hud_btn()
+        self._log.append_log(
+            "SYS: HUD switched to the animated face." if want == "face"
+            else "SYS: HUD switched to the reactor core.")
 
     def _toggle_ptt(self):
         from memory.config_manager import (get_push_to_talk_enabled,
@@ -7445,6 +7952,7 @@ class MainWindow(QMainWindow):
             cfg.get("user_name", ""),
             cfg.get("ui_color", "") or DEFAULT_UI_COLOR,
             cfg.get("voice_name", ""),
+            current_icon=self._current_icon_path or cfg.get("app_icon", ""),
             parent=cw,
         )
         ow = min(CustomizeOverlay._OW, cw.width() - 20)
@@ -7455,9 +7963,58 @@ class MainWindow(QMainWindow):
             ow, oh,
         )
         ov.on_preview = self._preview_ui_color
+        ov.on_icon_change = self.set_app_icon
         ov.saved.connect(self._apply_name_update)
         ov.show()
         self._customize_overlay = ov
+
+    def set_app_icon(self, icon_path_or_name: str) -> bool:
+        """
+        Updates the main application window, taskbar icon, and chassis insignia in realtime.
+        Accepts a full path, a filename in Icons/, or a keyword (e.g. 'beyond', 'white', 'asylum').
+        """
+        resolved_path = None
+        if icon_path_or_name:
+            p = Path(icon_path_or_name)
+            if p.is_file() and p.exists():
+                resolved_path = str(p.resolve())
+            else:
+                avail = get_available_app_icons()
+                target_q = icon_path_or_name.lower().strip()
+                for ic in avail:
+                    if (target_q in ic["name"].lower() or 
+                        target_q in ic["filename"].lower() or 
+                        target_q == Path(ic["path"]).stem.lower()):
+                        resolved_path = ic["path"]
+                        break
+
+        if not resolved_path:
+            return False
+
+        try:
+            ico = QIcon(resolved_path)
+            if not ico.isNull():
+                self.setWindowIcon(ico)
+                app = QApplication.instance()
+                if app:
+                    app.setWindowIcon(ico)
+                self._current_icon_path = resolved_path
+                from memory.config_manager import save_app_icon
+                save_app_icon(resolved_path)
+                display_name = format_icon_display_name(Path(resolved_path).name)
+                self._log.append_log(f"SYS: Insignia updated in realtime — {display_name}")
+                try:
+                    if hasattr(self, "hud") and self.hud:
+                        self.hud._custom_emblem_path = resolved_path
+                        self.hud.update()
+                except Exception:
+                    pass
+                return True
+        except Exception as e:
+            self._log.append_log(f"ERR: Failed to set app icon: {e}")
+            return False
+        return False
+
 
     def _preview_ui_color(self, hex_color: str):
         """Live preview — paints the whole interface the new colour (does NOT write to config)."""
@@ -7477,7 +8034,11 @@ class MainWindow(QMainWindow):
         self.hud._assistant_name = display
         if hasattr(self, "_dossier_card") and self._dossier_card:
             self._dossier_card.set_name(display)
-
+        try:
+            if self.hud._avatar and hasattr(self.hud._avatar, "reload_mesh"):
+                self.hud._avatar.reload_mesh()
+        except Exception:
+            pass
 
         color_changed = False
         if ui_color:
@@ -7773,11 +8334,22 @@ class _RootShim:
 
 class JarvisUI:
     def __init__(self, face_path: str, size=None):
+        if sys.platform == "win32":
+            try:
+                import ctypes
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("alfred.wayne.batcomputer.v2")
+            except Exception:
+                pass
         self._app = QApplication.instance() or QApplication(sys.argv)
         self._app.setStyle("Fusion")
         self._win = MainWindow(face_path)
         self.root = _RootShim(self._app)
         self._win.show()
+
+    def set_app_icon(self, icon_path_or_name: str) -> bool:
+        """Update application and window icon in realtime."""
+        return self._win.set_app_icon(icon_path_or_name)
+
 
     @property
     def muted(self) -> bool:
@@ -7891,7 +8463,12 @@ class JarvisUI:
             pass
 
     def glance(self, dx: float, dy: float, hold: float = 1.1) -> None:
-        pass
+        """Ask the avatar to look somewhere for a moment (see HoloAvatar.glance)."""
+        try:
+            if self._avatar is not None:
+                self._avatar.glance(dx, dy, hold)
+        except Exception:
+            pass
 
     @property
     def ptt_hold(self):
