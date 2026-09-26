@@ -53,14 +53,26 @@ def _is_rate_limit(error: Exception) -> bool:
 
 
 def _parse_traceback(output: str, project_files: list[str]) -> tuple[str | None, int | None]:
-
     pattern = re.compile(r'File ["\']([^"\']+\.py)["\'],\s+line\s+(\d+)', re.IGNORECASE)
     matches = pattern.findall(output)
+    if not matches or not project_files:
+        return None, None
+
+    # Pre-index project_files for O(1) lookups instead of O(N) linear scanning
+    name_to_pf: dict[str, str] = {}
+    exact_pfs = set(project_files)
+    for pf in project_files:
+        name = pf.replace("\\", "/").rsplit("/", 1)[-1]
+        name_to_pf[name] = pf
 
     for raw_path, line_str in reversed(matches):
-        raw_name = Path(raw_path).name
+        if raw_path in exact_pfs:
+            return raw_path, int(line_str)
+        raw_name = raw_path.replace("\\", "/").rsplit("/", 1)[-1]
+        if raw_name in name_to_pf:
+            return name_to_pf[raw_name], int(line_str)
         for pf in project_files:
-            if Path(pf).name == raw_name or pf == raw_path or raw_path.endswith(pf):
+            if raw_path.endswith(pf):
                 return pf, int(line_str)
 
     return None, None

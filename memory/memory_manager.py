@@ -94,17 +94,46 @@ def set_trim_notifier(fn) -> None:
 
 
 def _trim_to_limit(memory: dict) -> dict:
-    if len(json.dumps(memory, ensure_ascii=False)) <= MEMORY_MAX_CHARS:
+    raw = json.dumps(memory, ensure_ascii=False)
+    current_size = len(raw)
+    if current_size <= MEMORY_MAX_CHARS:
         return memory
+
     entries = _all_entries(memory)
+    # Sort oldest first: O(N log N)
     entries.sort(key=lambda t: t[2].get("updated", "0000-00-00"))
+
+    excess = current_size - MEMORY_MAX_CHARS
+    accumulated_reduction = 0
     dropped = []
-    for cat, key, _ in entries:
-        if len(json.dumps(memory, ensure_ascii=False)) <= MEMORY_MAX_CHARS:
-            break
+    idx = 0
+    num_entries = len(entries)
+
+    # Fast-pass: O(N) estimation of removed serialized size
+    # Avoids re-serializing the entire dictionary on every iteration (O(N^2))
+    while idx < num_entries and accumulated_reduction < excess:
+        cat, key, entry = entries[idx]
+        # Conservative lower bound on characters freed in json.dumps
+        freed = len(json.dumps(key, ensure_ascii=False)) + len(json.dumps(entry, ensure_ascii=False)) + 2
         del memory[cat][key]
         dropped.append(f"{cat}/{key}")
-        print(f"[Memory] 🗑️  Trimmed {cat}/{key}")
+        accumulated_reduction += freed
+        idx += 1
+
+    # Verify if residual bytes remain above MEMORY_MAX_CHARS (runs at most 1-2 times)
+    while idx < num_entries and len(json.dumps(memory, ensure_ascii=False)) > MEMORY_MAX_CHARS:
+        cat, key, _ = entries[idx]
+        del memory[cat][key]
+        dropped.append(f"{cat}/{key}")
+        idx += 1
+
+    if dropped:
+        if len(dropped) <= 20:
+            for item in dropped:
+                print(f"[Memory] [trim] Trimmed {item}")
+        else:
+            print(f"[Memory] [trim] Trimmed {len(dropped)} oldest entries to satisfy limit")
+
     if dropped and _trim_notifier:
         try:
             _trim_notifier(
