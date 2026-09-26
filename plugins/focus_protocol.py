@@ -1,6 +1,7 @@
 """
-Focus Protocol Plugin for JARVIS Mark-LIV.
+Focus Protocol Plugin for ALFRED Mark-LIV.
 Manages deep work intervals, Pomodoro timers, and distraction-free focus sessions.
+Stores state in ~/.alfred/focus_state.json (or ~/.jarvis/focus_state.json fallback).
 Auto-discovered by core/plugin_loader.py.
 """
 from __future__ import annotations
@@ -10,7 +11,10 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-_STATE_FILE = Path.home() / ".jarvis" / "focus_state.json"
+_LEGACY_STATE_FILE = Path.home() / ".jarvis" / "focus_state.json"
+_STATE_FILE = Path.home() / ".alfred" / "focus_state.json"
+if not _STATE_FILE.exists() and _LEGACY_STATE_FILE.exists():
+    _STATE_FILE = _LEGACY_STATE_FILE
 
 
 def _read_state() -> dict:
@@ -96,7 +100,7 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
         res = f"Sir, focus protocol initiated for {duration} minutes on '{task}'. Target completion at {end_clock}."
         if player:
             try:
-                player.write_log(f"JARVIS: [Focus Protocol] Active: '{task}' ({duration}m, until {end_clock})")
+                player.write_log(f"ALFRED: [Focus Protocol] Active: '{task}' ({duration}m, until {end_clock})")
             except Exception:
                 pass
         return res
@@ -128,7 +132,7 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
         msg = "Focus protocol deactivated. Non-critical notifications and background audio restored."
         if player:
             try:
-                player.write_log("JARVIS: [Focus Protocol] Session concluded.")
+                player.write_log("ALFRED: [Focus Protocol] Session concluded.")
             except Exception:
                 pass
         return msg

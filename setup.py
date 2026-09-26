@@ -7,7 +7,7 @@ user never pulls Windows-only libraries (and vice-versa). Then it fetches the
 Playwright browsers needed for web automation (current-OS builds only).
 
 Two things it deliberately does NOT install:
-  * the optional local wake word ("Hey Jarvis") — one-click, opt-in, from
+  * the optional local wake word ("Hey Jarvis" / "Hey Alfred") — one-click, opt-in, from
     ⚙ → WAKE WORD inside the app;
   * anything for the avatar — the holographic head renders in software on the
     PyQt6 and numpy already listed here. No GPU, no OpenGL, no extra packages.
@@ -55,7 +55,15 @@ def _check_python() -> None:
         sys.exit(1)
 
 
-
+def _check_assets() -> None:
+    """The avatar's face is a shipped file; a truncated clone should say so."""
+    face = HERE / "core" / "face_model.obj"
+    if not face.exists() or face.stat().st_size < 4096:
+        print(
+            "\n⚠️  core/face_model.obj is missing or truncated — the avatar will "
+            "fall back to the plain glowing core.\n"
+            "    Re-clone the repository, or fetch that one file again."
+        )
 
 
 def main() -> None:
@@ -81,6 +89,7 @@ def main() -> None:
         print("    Everything except browser automation works. Retry later with:")
         print(f'    {sys.executable} -m playwright install chromium firefox')
 
+    _check_assets()
 
     # ── OS-specific post-install notes ────────────────────────────────────────
     if OS == "Windows":
@@ -113,7 +122,7 @@ def main() -> None:
     print("\n✅ Setup complete!")
     print("   1) Launch it:  python main.py")
     print("   2) Paste your free Gemini API key when the setup screen appears.")
-    print("   3) (Optional) Enable 'Hey Jarvis' from ⚙ → WAKE WORD.")
+    print("   3) (Optional) Enable Wake Word from ⚙ → WAKE WORD.")
 
 
 if __name__ == "__main__":

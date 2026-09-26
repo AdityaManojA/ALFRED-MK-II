@@ -1,5 +1,5 @@
 """
-Update App Icon Action for JARVIS / Alfred Mark-LIV.
+Update App Icon Action for ALFRED Mark-LIV.
 Switches the application window, taskbar, and chassis insignia in realtime on voice/chat command.
 """
 from __future__ import annotations

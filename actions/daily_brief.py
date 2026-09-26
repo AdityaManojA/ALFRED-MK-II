@@ -1,5 +1,5 @@
 """
-Daily Brief Action for JARVIS Mark-LIV.
+Daily Brief Action for ALFRED Mark-LIV.
 Provides the ultimate morning and daily executive briefing:
   - Personalized time-of-day greeting (Morning, Afternoon, Evening)
   - Live local weather conditions & temperature
@@ -103,14 +103,16 @@ def _get_gmail_brief() -> str:
 
 
 def _get_reminders_brief() -> str:
-    """Check scheduled reminders in ~/.jarvis/reminders."""
-    reminders_dir = Path.home() / ".jarvis" / "reminders"
+    """Check scheduled reminders in ~/.alfred/reminders or ~/.jarvis/reminders."""
+    reminders_dir = Path.home() / ".alfred" / "reminders"
+    if not reminders_dir.exists():
+        reminders_dir = Path.home() / ".jarvis" / "reminders"
     if not reminders_dir.exists():
         return "No pending reminders logged for today."
 
     try:
         today_prefix = datetime.now().strftime("%Y%m%d")
-        matching = list(reminders_dir.glob(f"JARVISReminder_{today_prefix}_*.py"))
+        matching = list(reminders_dir.glob(f"*Reminder_{today_prefix}_*.py"))
         if matching:
             return f"You have {len(matching)} scheduled reminder{'s' if len(matching) != 1 else ''} on docket for today."
         return "Your scheduled reminder queue is clear for the day."
@@ -205,7 +207,7 @@ def daily_brief(
 
     if player:
         try:
-            player.write_log("JARVIS: [Daily Brief] ── Executive Status Report ──")
+            player.write_log("ALFRED: [Daily Brief] ── Executive Status Report ──")
             player.write_log(f"   • {greeting}")
             if inc_weather:
                 player.write_log(f"   • Weather: {weather_text}")

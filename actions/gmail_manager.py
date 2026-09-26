@@ -1,5 +1,5 @@
 """
-Gmail Manager Action for JARVIS Mark-LIV.
+Gmail Manager Action for ALFRED Mark-LIV.
 Provides full Gmail connectivity:
   - Reading unread / recent emails with intelligent body extraction
   - Executive summarization of inboxes and threads
@@ -163,7 +163,7 @@ def send_gmail_message(to_addr: str, subject: str, body: str) -> tuple[bool, str
 
     try:
         msg = MIMEMultipart()
-        msg["From"] = f"JARVIS Assistant <{user}>"
+        msg["From"] = f"ALFRED Assistant <{user}>"
         msg["To"] = to_addr.strip()
         msg["Subject"] = subject.strip()
         msg.attach(MIMEText(body.strip(), "plain", "utf-8"))
@@ -201,7 +201,7 @@ def gmail_manager(
         )
         if player:
             try:
-                player.write_log(f"JARVIS: [Gmail] Setup needed: specify gmail_user & gmail_app_password in config/api_keys.json")
+                player.write_log(f"ALFRED: [Gmail] Setup needed: specify gmail_user & gmail_app_password in config/api_keys.json")
             except Exception:
                 pass
         return setup_notice
@@ -210,10 +210,10 @@ def gmail_manager(
     if mode == "send":
         if not to_addr or not body:
             return "Sir, I require both a recipient address and message body to send an email."
-        ok, res = send_gmail_message(to_addr, subject or "Message from JARVIS", body)
+        ok, res = send_gmail_message(to_addr, subject or "Message from ALFRED", body)
         if player:
             try:
-                player.write_log(f"JARVIS: [Gmail] {res}")
+                player.write_log(f"ALFRED: [Gmail] {res}")
             except Exception:
                 pass
         return res
@@ -237,7 +237,7 @@ def gmail_manager(
 
     if player:
         try:
-            player.write_log(f"JARVIS: [Gmail] Reviewed {count} unread emails.")
+            player.write_log(f"ALFRED: [Gmail] Reviewed {count} unread emails.")
             for em in emails:
                 player.write_log(f"   • {em['sender']} — {em['subject']}")
         except Exception:

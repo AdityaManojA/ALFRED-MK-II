@@ -1,7 +1,7 @@
 """
-Calendar Sync Plugin for JARVIS Mark-LIV.
+Calendar Sync Plugin for ALFRED Mark-LIV.
 Tracks agenda, meetings, appointments, and daily schedules.
-Stores events in ~/.jarvis/calendar.json.
+Stores events in ~/.alfred/calendar.json (or ~/.jarvis/calendar.json fallback).
 Auto-discovered by core/plugin_loader.py.
 """
 from __future__ import annotations
@@ -11,7 +11,10 @@ from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Optional
 
-_STORE = Path.home() / ".jarvis" / "calendar.json"
+_LEGACY_STORE = Path.home() / ".jarvis" / "calendar.json"
+_STORE = Path.home() / ".alfred" / "calendar.json"
+if not _STORE.exists() and _LEGACY_STORE.exists():
+    _STORE = _LEGACY_STORE
 
 
 def _load_events() -> list[dict]:
@@ -121,7 +124,7 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
         msg = f"Scheduled '{title}' for {date_str} at {time_str} ({duration} mins)."
         if player:
             try:
-                player.write_log(f"JARVIS: [Calendar] {msg}")
+                player.write_log(f"ALFRED: [Calendar] {msg}")
             except Exception:
                 pass
         return f"Sir, I have scheduled '{title}' for {date_str} at {time_str}."
@@ -161,7 +164,7 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
     res = " ".join(brief)
     if player:
         try:
-            player.write_log(f"JARVIS: [Calendar] Agenda for {date_str}:")
+            player.write_log(f"ALFRED: [Calendar] Agenda for {date_str}:")
             for ev in today_events:
                 player.write_log(f"   • {ev.get('time')} — {ev.get('title')}")
         except Exception:
