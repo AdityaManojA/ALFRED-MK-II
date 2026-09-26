@@ -18,12 +18,14 @@ Supported types:
 
 import os
 import re
+import csv
 import json
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 from datetime import datetime
+from typing import Generator, Any, Callable, Tuple, List, Dict, Optional
 
 # Model choice, timeout and fallback ladder all live in core/gemini.py.
 from core import gemini
@@ -254,24 +256,292 @@ def _process_pdf(path: Path, action: str, params: dict, speak=None) -> str:
 
     return f"Unknown PDF action: '{action}'. Try: summarize, extract_text, info, to_word"
 
+# =========================================================================
+# Memory-Optimized Streaming & Backpressure Pipeline (Chunks: 500 / 64KB)
+# =========================================================================
+CHUNK_RECORD_COUNT = 500
+CHUNK_BYTE_SIZE = 64 * 1024  # 64 KB
+
+
+def stream_csv_records(file_path: Path, chunk_size: int = CHUNK_RECORD_COUNT) -> Generator[Tuple[List[str], List[List[str]]], None, None]:
+    """Streams CSV records in chunks of 500 records, never loading the full payload into memory."""
+    with open(file_path, "r", encoding="utf-8", errors="replace", newline="") as f:
+        reader = csv.reader(f)
+        header = next(reader, None)
+        if header is None:
+            return
+        batch: List[List[str]] = []
+        for row in reader:
+            batch.append(row)
+            if len(batch) >= chunk_size:
+                yield header, batch
+                batch = []
+        if batch:
+            yield header, batch
+
+
+def stream_filter_csv(
+    src_path: Path,
+    dst_path: Path,
+    col_name: str,
+    value: str,
+    condition: str = "equals",
+    chunk_size: int = CHUNK_RECORD_COUNT
+) -> int:
+    """Streams input CSV, filters records chunk-by-chunk with backpressure, and writes directly to output.
+    Memory footprint remains O(1) regardless of whether the file is 10MB, 500MB, or 10GB.
+    """
+    matched_count = 0
+    with open(src_path, "r", encoding="utf-8", errors="replace", newline="") as src_f, \
+         open(dst_path, "w", encoding="utf-8", errors="replace", newline="") as dst_f:
+        reader = csv.reader(src_f)
+        header = next(reader, None)
+        if not header:
+            return 0
+
+        try:
+            col_idx = header.index(col_name)
+        except ValueError:
+            raise ValueError(f"Column '{col_name}' not found. Available: {', '.join(header)}")
+
+        writer = csv.writer(dst_f)
+        writer.writerow(header)
+
+        chunk_written = 0
+        val_str = str(value).lower()
+        val_float: Optional[float] = None
+        if condition in ("gt", "lt"):
+            try:
+                val_float = float(value)
+            except ValueError:
+                pass
+
+        for row in reader:
+            if col_idx >= len(row):
+                continue
+            cell_val = row[col_idx]
+            match = False
+            if condition == "equals":
+                match = (cell_val == str(value))
+            elif condition == "contains":
+                match = (val_str in cell_val.lower())
+            elif condition == "gt" and val_float is not None:
+                try:
+                    match = (float(cell_val) > val_float)
+                except ValueError:
+                    match = False
+            elif condition == "lt" and val_float is not None:
+                try:
+                    match = (float(cell_val) < val_float)
+                except ValueError:
+                    match = False
+            else:
+                match = (cell_val == str(value))
+
+            if match:
+                writer.writerow(row)
+                matched_count += 1
+                chunk_written += 1
+                # Backpressure: flush every chunk_size records to prevent OS buffer accumulation
+                if chunk_written >= chunk_size:
+                    dst_f.flush()
+                    chunk_written = 0
+
+        dst_f.flush()
+    return matched_count
+
+
+def stream_csv_to_json(
+    src_path: Path,
+    dst_path: Path,
+    chunk_size: int = CHUNK_RECORD_COUNT
+) -> int:
+    """Streams a CSV file directly to a formatted JSON array with backpressure handling.
+    Avoids building an in-memory list of hundreds of thousands of dicts.
+    """
+    total_records = 0
+    with open(src_path, "r", encoding="utf-8", errors="replace", newline="") as src_f, \
+         open(dst_path, "w", encoding="utf-8", errors="replace") as dst_f:
+        reader = csv.reader(src_f)
+        header = next(reader, None)
+        if not header:
+            dst_f.write("[]")
+            return 0
+
+        dst_f.write("[\n")
+        first = True
+        chunk_written = 0
+
+        for row in reader:
+            total_records += 1
+            record = {h: (row[i] if i < len(row) else "") for i, h in enumerate(header)}
+            item_json = json.dumps(record, ensure_ascii=False)
+            if not first:
+                dst_f.write(",\n  " + item_json)
+            else:
+                dst_f.write("  " + item_json)
+                first = False
+
+            chunk_written += 1
+            if chunk_written >= chunk_size:
+                dst_f.flush()
+                chunk_written = 0
+
+        dst_f.write("\n]")
+        dst_f.flush()
+    return total_records
+
+
+def stream_csv_info(src_path: Path) -> Tuple[int, List[str]]:
+    """Inspects CSV dimensions (total rows, column headers) via streaming without loading payload."""
+    total_rows = 0
+    header: List[str] = []
+    with open(src_path, "r", encoding="utf-8", errors="replace", newline="") as f:
+        reader = csv.reader(f)
+        h = next(reader, None)
+        if h:
+            header = h
+            for _ in reader:
+                total_rows += 1
+    return total_rows, header
+
+
+def stream_csv_sample(src_path: Path, max_rows: int = 50) -> Tuple[List[str], List[List[str]], int]:
+    """Streams sample preview for LLM analysis without reading entire file into memory."""
+    sample: List[List[str]] = []
+    header: List[str] = []
+    total_rows = 0
+    with open(src_path, "r", encoding="utf-8", errors="replace", newline="") as f:
+        reader = csv.reader(f)
+        h = next(reader, None)
+        if h:
+            header = h
+            for row in reader:
+                total_rows += 1
+                if len(sample) < max_rows:
+                    sample.append(row)
+    return header, sample, total_rows
+
+
+def stream_text_metrics(src_path: Path, chunk_size: int = CHUNK_BYTE_SIZE) -> Tuple[int, int, int]:
+    """Streams text in chunks of 64KB to calculate word count, character count, and line count
+    without buffering the entire file into memory.
+    """
+    words = 0
+    chars = 0
+    lines = 0
+    in_word = False
+    with open(src_path, "r", encoding="utf-8", errors="ignore") as f:
+        while True:
+            chunk = f.read(chunk_size)
+            if not chunk:
+                break
+            chars += len(chunk)
+            lines += chunk.count("\n")
+            for ch in chunk:
+                if ch.isspace():
+                    in_word = False
+                elif not in_word:
+                    words += 1
+                    in_word = True
+    return words, chars, lines
+
+
+def stream_file_copy(src_path: Path, dst_path: Path, chunk_size: int = CHUNK_BYTE_SIZE) -> int:
+    """Streams bytes from src to dst in 64KB chunks with backpressure flushing."""
+    total_bytes = 0
+    with open(src_path, "rb") as src, open(dst_path, "wb") as dst:
+        while True:
+            chunk = src.read(chunk_size)
+            if not chunk:
+                break
+            dst.write(chunk)
+            total_bytes += len(chunk)
+            dst.flush()
+    return total_bytes
+
+
+def stream_json_array_to_csv(src_path: Path, dst_path: Path, chunk_size: int = CHUNK_RECORD_COUNT) -> int:
+    """Streams a JSON array file directly to CSV format in chunks of 500 records without loading full payload."""
+    total_written = 0
+    with open(src_path, "r", encoding="utf-8", errors="replace") as src_f:
+        ch = src_f.read(1)
+        while ch and ch.isspace():
+            ch = src_f.read(1)
+        if ch != "[":
+            src_f.seek(0)
+            data = json.load(src_f)
+            if not isinstance(data, list):
+                raise ValueError("JSON must be an array of objects to convert to CSV.")
+            if not data:
+                return 0
+            keys = list(data[0].keys())
+            with open(dst_path, "w", encoding="utf-8", errors="replace", newline="") as dst_f:
+                writer = csv.DictWriter(dst_f, fieldnames=keys)
+                writer.writeheader()
+                writer.writerows(data)
+            return len(data)
+
+        decoder = json.JSONDecoder()
+        buffer = ""
+        header: Optional[List[str]] = None
+        writer = None
+        with open(dst_path, "w", encoding="utf-8", errors="replace", newline="") as dst_f:
+            while True:
+                chunk = src_f.read(CHUNK_BYTE_SIZE)
+                if not chunk:
+                    break
+                buffer += chunk
+                while buffer:
+                    buffer = buffer.lstrip(" \t\r\n,[")
+                    if not buffer or buffer.startswith("]"):
+                        break
+                    try:
+                        obj, idx = decoder.raw_decode(buffer)
+                        buffer = buffer[idx:]
+                        if isinstance(obj, dict):
+                            if header is None:
+                                header = list(obj.keys())
+                                writer = csv.DictWriter(dst_f, fieldnames=header)
+                                writer.writeheader()
+                            writer.writerow(obj)
+                            total_written += 1
+                            if total_written % chunk_size == 0:
+                                dst_f.flush()
+                    except json.JSONDecodeError:
+                        break
+            dst_f.flush()
+    return total_written
+
+
 def _process_text_doc(path: Path, file_type: str, action: str,
                        params: dict, speak=None) -> str:
     action = action or "summarize"
 
-    def _read_content() -> str:
+    if action == "word_count" and file_type != "docx":
+        words, chars, lines = stream_text_metrics(path)
+        return f"Word count: {words:,} words, {chars:,} characters, {lines:,} lines."
+
+    if action == "extract_text" and file_type == "txt":
+        out = _output_path(path, "extracted", ".txt")
+        total = stream_file_copy(path, out)
+        return f"Text extracted ({total:,} bytes). Saved: {out.name}"
+
+    def _read_content_streamed(max_chars: int = 45000) -> str:
         if file_type == "docx":
             try:
                 from docx import Document
-                doc  = Document(path)
+                doc = Document(path)
                 return "\n".join(p.text for p in doc.paragraphs)
             except ImportError:
                 return "python-docx not installed."
             except Exception as e:
                 return f"Read failed: {e}"
         else:
-            return path.read_text(encoding="utf-8", errors="ignore")
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read(max_chars)
 
-    content = _read_content()
+    content = _read_content_streamed(45000)
     if not content.strip():
         return "File appears to be empty."
 
@@ -289,19 +559,18 @@ def _process_text_doc(path: Path, file_type: str, action: str,
         return content[:2000]
 
     instruction = params.get("instruction", "")
-    prompt_map  = {
-        "summarize":  f"Summarize this document concisely:\n\n{content[:40000]}",
-        "analyze":    f"Analyze this document:\n\n{content[:40000]}",
-        "reformat":   f"Reformat this text with clean structure, proper headings and paragraphs:\n\n{content[:40000]}",
-        "fix":        f"Fix grammar, spelling and style issues in this text:\n\n{content[:40000]}",
+    prompt_map = {
+        "summarize":      f"Summarize this document concisely:\n\n{content[:40000]}",
+        "analyze":        f"Analyze this document:\n\n{content[:40000]}",
+        "reformat":       f"Reformat this text with clean structure, proper headings and paragraphs:\n\n{content[:40000]}",
+        "fix":            f"Fix grammar, spelling and style issues in this text:\n\n{content[:40000]}",
         "translate_hint": f"What language is this and what does it say? Summarize:\n\n{content[:10000]}",
-        "to_bullet":  f"Convert this text into a clear bullet-point summary:\n\n{content[:40000]}",
-        "custom":     f"{instruction}\n\n{content[:40000]}",
+        "to_bullet":      f"Convert this text into a clear bullet-point summary:\n\n{content[:40000]}",
+        "custom":         f"{instruction}\n\n{content[:40000]}",
     }
 
     if action not in prompt_map:
-
-        action  = "custom"
+        action = "custom"
         instruction = action
 
     try:
@@ -319,12 +588,67 @@ def _process_text_doc(path: Path, file_type: str, action: str,
 
 def _process_data(path: Path, file_type: str, action: str,
                   params: dict, speak=None) -> str:
+    action = action or "analyze"
+
+    # 1. STREAMING CSV PATH: Zero memory accumulation for large CSV files
+    if file_type == "csv":
+        if action == "info":
+            try:
+                rows, cols = stream_csv_info(path)
+                return (f"Rows: {rows:,}, Columns: {len(cols)}\n"
+                        f"Columns: {', '.join(cols)}\n"
+                        f"Size: {_file_size_str(path)}")
+            except Exception as e:
+                return f"Could not inspect CSV: {e}"
+
+        if action == "filter":
+            col       = params.get("column", "")
+            value     = params.get("value", "")
+            condition = params.get("condition", "equals")
+            out       = _output_path(path, "filtered", ".csv")
+            try:
+                matched = stream_filter_csv(path, out, col, value, condition)
+                return f"Filtered: {matched:,} rows match. Saved: {out.name}"
+            except Exception as e:
+                return f"Filter failed: {e}"
+
+        if action in ("convert", "to_csv", "to_excel", "to_json"):
+            fmt = {"to_csv": "csv", "to_excel": "xlsx", "to_json": "json",
+                   "convert": params.get("format", "csv")}.get(action, "csv")
+            if fmt == "json":
+                try:
+                    out = _output_path(path, "converted", ".json")
+                    total = stream_csv_to_json(path, out)
+                    return f"Converted to JSON ({total:,} records). Saved: {out.name}"
+                except Exception as e:
+                    return f"Convert to JSON failed: {e}"
+            elif fmt == "csv":
+                try:
+                    out = _output_path(path, "converted", ".csv")
+                    stream_file_copy(path, out)
+                    return f"Converted to CSV. Saved: {out.name}"
+                except Exception as e:
+                    return f"Convert to CSV failed: {e}"
+
+        if action == "analyze":
+            try:
+                header, sample, total_rows = stream_csv_sample(path, max_rows=50)
+                preview_lines = [", ".join(header)] + [", ".join(r) for r in sample]
+                preview = "\n".join(preview_lines[:50])
+                prompt  = (f"Analyze this dataset. Columns: {header}\n"
+                           f"Rows: {total_rows}\nPreview:\n{preview}\n\n"
+                           f"Give insights, patterns, and notable findings.")
+                model    = _gemini_client()
+                response = model.generate_content(prompt)
+                return response.text.strip()
+            except Exception as e:
+                return f"AI analysis failed: {e}"
+
+    # 2. PANDAS FALLBACK (For Excel or in-memory operations like complex multi-column sorts)
     try:
         import pandas as pd
     except ImportError:
         return "pandas not installed. Run: pip install pandas openpyxl"
-
-    action = action or "analyze"
 
     try:
         if file_type == "csv":
@@ -335,7 +659,7 @@ def _process_data(path: Path, file_type: str, action: str,
         return f"Could not read file: {e}"
 
     if action == "info":
-        return (f"Rows: {len(df)}, Columns: {len(df.columns)}\n"
+        return (f"Rows: {len(df):,}, Columns: {len(df.columns)}\n"
                 f"Columns: {', '.join(df.columns.tolist())}\n"
                 f"Size: {_file_size_str(path)}")
 
@@ -389,7 +713,7 @@ def _process_data(path: Path, file_type: str, action: str,
             else:                         filtered = df[df[col] == value]
             out = _output_path(path, "filtered", ".csv")
             filtered.to_csv(out, index=False)
-            return f"Filtered: {len(filtered)} rows match. Saved: {out.name}"
+            return f"Filtered: {len(filtered):,} rows match. Saved: {out.name}"
         except Exception as e:
             return f"Filter failed: {e}"
 
@@ -417,22 +741,43 @@ def _process_data(path: Path, file_type: str, action: str,
 
 def _process_json(path: Path, action: str, params: dict, speak=None) -> str:
     action = action or "analyze"
+
+    if action == "to_csv":
+        out = _output_path(path, "converted", ".csv")
+        try:
+            total = stream_json_array_to_csv(path, out)
+            return f"Converted to CSV ({total:,} records). Saved: {out.name}"
+        except Exception as e:
+            return f"Convert to CSV failed: {e}"
+
+    # For preview and validation: stream check or small read
     try:
-        content = path.read_text(encoding="utf-8")
-        data    = json.loads(content)
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            sample_text = f.read(10000)
     except Exception as e:
-        return f"Invalid JSON: {e}"
+        return f"Could not read JSON file: {e}"
 
     if action == "validate":
-        return f"Valid JSON. Type: {type(data).__name__}, size: {_file_size_str(path)}"
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return f"Valid JSON. Type: {type(data).__name__}, size: {_file_size_str(path)}"
+        except Exception as e:
+            return f"Invalid JSON: {e}"
 
     if action == "format":
-        out = _output_path(path, "formatted", ".json")
-        out.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        return f"Formatted JSON saved: {out.name}"
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            out = _output_path(path, "formatted", ".json")
+            with open(out, "w", encoding="utf-8") as out_f:
+                json.dump(data, out_f, indent=2, ensure_ascii=False)
+            return f"Formatted JSON saved: {out.name}"
+        except Exception as e:
+            return f"Formatting failed: {e}"
 
     if action in ("analyze", "summarize", "extract"):
-        preview = json.dumps(data, indent=2, ensure_ascii=False)[:8000]
+        preview = sample_text[:8000]
         prompt  = f"Task: {action} this JSON data:\n{preview}"
         if params.get("instruction"):
             prompt = f"{params['instruction']}\n\nJSON data:\n{preview}"
@@ -442,18 +787,6 @@ def _process_json(path: Path, action: str, params: dict, speak=None) -> str:
             return response.text.strip()
         except Exception as e:
             return f"AI processing failed: {e}"
-
-    if action == "to_csv":
-        try:
-            import pandas as pd
-            if isinstance(data, list):
-                df  = pd.DataFrame(data)
-                out = _output_path(path, "converted", ".csv")
-                df.to_csv(out, index=False)
-                return f"Converted to CSV. Saved: {out.name}"
-            return "JSON must be an array of objects to convert to CSV."
-        except ImportError:
-            return "pandas not installed."
 
     return _process_json(path, "analyze", {"instruction": action})
 

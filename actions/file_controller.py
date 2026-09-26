@@ -400,9 +400,11 @@ def read_file(path: str, name: str = "", max_chars: int = 4000) -> str:
         if not target.is_file():
             return f"Not a file: {target.name}"
 
-        content = target.read_text(encoding="utf-8", errors="ignore")
+        total_size = target.stat().st_size
+        with open(target, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read(max_chars + 1)
         if len(content) > max_chars:
-            content = content[:max_chars] + f"\n\n[Truncated — {len(content)} total chars]"
+            content = content[:max_chars] + f"\n\n[Truncated — {_format_size(total_size)} total]"
         return content
 
     except Exception as e:
