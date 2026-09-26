@@ -5660,13 +5660,14 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle(f"{_display} — {APP_VERSION}")
         self._current_icon_path = None
+        self._log = None
         saved_icon = _cfg.get("app_icon", "")
         if saved_icon and Path(saved_icon).exists():
-            self.set_app_icon(saved_icon)
+            self.set_app_icon(saved_icon, notify=False)
         else:
             avail = get_available_app_icons()
             if avail:
-                self.set_app_icon(avail[0]["path"])
+                self.set_app_icon(avail[0]["path"], notify=False)
             else:
                 _cfg_dir = Path(__file__).resolve().parent / "config"
                 for _ico_name in ("alfred.ico", "alfred.png", "jarvis.ico", "jarvis.png", "logo.png"):
@@ -7990,7 +7991,7 @@ class MainWindow(QMainWindow):
         ov.show()
         self._customize_overlay = ov
 
-    def set_app_icon(self, icon_path_or_name: str) -> bool:
+    def set_app_icon(self, icon_path_or_name: str, notify: bool = True) -> bool:
         """
         Updates the main application window, taskbar icon, and chassis insignia in realtime.
         Accepts a full path, a filename in Icons/, or a keyword (e.g. 'beyond', 'white', 'asylum').
@@ -8024,7 +8025,8 @@ class MainWindow(QMainWindow):
                 from memory.config_manager import save_app_icon
                 save_app_icon(resolved_path)
                 display_name = format_icon_display_name(Path(resolved_path).name)
-                self._log.append_log(f"SYS: Insignia updated in realtime — {display_name}")
+                if notify and hasattr(self, "_log") and self._log:
+                    self._log.append_log(f"SYS: Insignia updated in realtime — {display_name}")
                 try:
                     if hasattr(self, "hud") and self.hud:
                         self.hud._custom_emblem_path = resolved_path
@@ -8033,7 +8035,10 @@ class MainWindow(QMainWindow):
                     pass
                 return True
         except Exception as e:
-            self._log.append_log(f"ERR: Failed to set app icon: {e}")
+            if hasattr(self, "_log") and self._log:
+                self._log.append_log(f"ERR: Failed to set app icon: {e}")
+            else:
+                print(f"[UI] ⚠️ Failed to set app icon: {e}")
             return False
         return False
 
