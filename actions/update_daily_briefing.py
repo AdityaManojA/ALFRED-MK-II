@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import Optional
 
 from memory.memory_manager import update_memory, load_memory
+from core.cache import get_cache
 
 
 def update_daily_briefing(
@@ -35,6 +36,15 @@ def update_daily_briefing(
 
     update_memory(memory_update)
 
+    # ── Cache Invalidation Hook ────────────────────────────────────────────────
+    # Immediately purge stale cached weather forecasts and briefing news
+    cache = get_cache()
+    if city:
+        cache.invalidate_prefix("weather:")
+    if preferences:
+        cache.invalidate_prefix("daily_brief:")
+        cache.invalidate_prefix("web_news:")
+
     msg = "Daily briefing preferences successfully and permanently saved to memory."
     if preferences:
         msg += f" Briefing focus: {preferences}."
@@ -43,7 +53,7 @@ def update_daily_briefing(
 
     if player:
         try:
-            player.write_log(f"🧠 [Memory] Updated Daily Briefing: {preferences or city}")
+            player.write_log(f"🧠 [Memory] Updated Daily Briefing (Cache Invalidated): {preferences or city}")
         except Exception:
             pass
 

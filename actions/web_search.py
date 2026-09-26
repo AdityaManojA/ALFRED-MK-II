@@ -5,6 +5,10 @@ import threading
 import time
 from pathlib import Path
 
+from core.cache import get_cache
+
+_SEARCH_CACHE_TTL = 900  # 15 minutes
+
 # ── Gemini grounding quota circuit breaker ────────────────────────────────────
 # The google_search grounding tool has its own small quota, separate from plain
 # generation.  Once it is spent every call returns 429 — so retrying it at the
@@ -241,44 +245,69 @@ def _gemini_headlines(n: int = 5) -> tuple[list[str], str]:
 # ── Modes ──────────────────────────────────────────────────────────────────────
 
 def _search(query: str) -> str:
-    """Default search — Gemini grounded, DDG fallback."""
+    """Default search — Gemini grounded, DDG fallback with 15-minute caching."""
+    clean_query = query.strip()
+    cache = get_cache()
+    cache_key = cache.build_key("web_search", query=clean_query.lower())
     try:
-        return _gemini_search(query)
+        cached_result = cache.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+    except Exception as e:
+        print(f"[WebSearch] Cache check failed: {e}")
+
+    try:
+        result = _gemini_search(clean_query)
     except Exception as e:
         _log_gemini_failure("Gemini search", e)
-        results = _ddg_search(query)
-        return _format_ddg(query, results)
+        results = _ddg_search(clean_query)
+        result = _format_ddg(clean_query, results)
+
+    if result and not result.startswith("No information found"):
+        try:
+            cache.set(cache_key, result, ttl=_SEARCH_CACHE_TTL)
+        except Exception:
+            pass
+
+    return result
 
 
 def _news(query: str) -> str:
     """
-    DDG first, Gemini as backup.
-
-    The old version raced both backends in parallel and kept the first answer.
-    That burned one google_search grounding call on *every* news request —
-    including the startup briefing — even when DDG had already won the race.
-    Grounding has a small quota, so it ran dry after a handful of launches and
-    then 429'd for everything else (research/compare), which are the modes that
-    actually need a synthesised answer.
-
-    DDG news returns in well under a second and gives raw headlines, which is
-    exactly what the briefing wants, so it goes first and Gemini is only touched
-    when DDG comes back empty.
+    DDG first, Gemini as backup, with 15-minute caching to protect quota.
     """
-    gemini_query = f"latest news today: {query}" if query else "top world news today"
-    ddg_query    = query if query else "world news today"
+    clean_query = query.strip()
+    cache = get_cache()
+    cache_key = cache.build_key("web_news", query=clean_query.lower())
+    try:
+        cached_news = cache.get(cache_key)
+        if cached_news is not None:
+            return cached_news
+    except Exception as e:
+        print(f"[WebSearch] News cache check failed: {e}")
+
+    gemini_query = f"latest news today: {clean_query}" if clean_query else "top world news today"
+    ddg_query    = clean_query if clean_query else "world news today"
 
     def _ddg_attempt() -> str:
         return _format_news(ddg_query, _ddg_news(ddg_query, max_results=8))
 
     text = _run_bounded(_ddg_attempt, timeout=5.0, label="DDG news")
     if text and len(text) > 60 and not text.startswith("No news found"):
+        try:
+            cache.set(cache_key, text, ttl=_SEARCH_CACHE_TTL)
+        except Exception:
+            pass
         return text
 
     text = _run_bounded(
         lambda: _gemini_search(gemini_query), timeout=6.0, label="Gemini news"
     )
     if text and len(text) > 60:
+        try:
+            cache.set(cache_key, text, ttl=_SEARCH_CACHE_TTL)
+        except Exception:
+            pass
         return text
 
     return f"No news found for: {query}"

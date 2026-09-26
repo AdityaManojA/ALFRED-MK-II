@@ -21,8 +21,10 @@ from typing import Optional
 import psutil
 
 from memory.config_manager import get_user_name, get_assistant_name
+from core.cache import get_cache
 
 _CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "api_keys.json"
+_WEATHER_CACHE_TTL = 900  # 15 minutes
 
 
 def _get_greeting() -> str:
@@ -67,6 +69,16 @@ def _get_live_weather(city: Optional[str] = None) -> str:
             pass
 
 
+    # 1. Cache-aside lookup
+    cache = get_cache()
+    cache_key = cache.build_key("weather", city=target_city.lower())
+    try:
+        cached_weather = cache.get(cache_key)
+        if cached_weather is not None:
+            return cached_weather
+    except Exception as e:
+        print(f"[DailyBrief] Weather cache check failed: {e}")
+
     url = f"https://wttr.in/{urllib.parse.quote(target_city)}?format=%C+and+%t" if target_city else "https://wttr.in?format=%C+and+%t"
 
     try:
@@ -78,7 +90,12 @@ def _get_live_weather(city: Optional[str] = None) -> str:
             clean_text = "".join(ch for ch in clean_text if ord(ch) < 128)
             if clean_text and not clean_text.startswith("<") and "Unknown" not in clean_text:
                 loc = f" in {target_city}" if target_city else ""
-                return f"Currently{loc}, conditions are {clean_text.strip()}."
+                result = f"Currently{loc}, conditions are {clean_text.strip()}."
+                try:
+                    cache.set(cache_key, result, ttl=_WEATHER_CACHE_TTL)
+                except Exception:
+                    pass
+                return result
     except Exception:
         pass
 
