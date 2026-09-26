@@ -234,10 +234,10 @@
     "semantic_hash": "d9c6de0df2bf028d93924aff92487904"
   },
   "main.py": {
-    "mtime": 1790406107.6035268,
-    "seen": 1790406257.4345908,
-    "ast_hash": "8fd04b8afe0021a4d1f81d27dea27bbf",
-    "semantic_hash": ""
+    "mtime": 1790354039.67021,
+    "seen": 1790354651.6817086,
+    "ast_hash": "b6d20f43801d50a9293ea8d4a98acb96",
+    "semantic_hash": "b6d20f43801d50a9293ea8d4a98acb96"
   },
   "memory/__init__.py": {
     "mtime": 1790275670.9227638,
@@ -288,15 +288,15 @@
     "semantic_hash": ""
   },
   "core/prompt.txt": {
-    "mtime": 1790406059.8145287,
-    "seen": 1790406257.4345908,
-    "ast_hash": "e8bc5684f86b19c83eac008951f2deca",
+    "mtime": 1790316895.637185,
+    "seen": 1790317352.0753677,
+    "ast_hash": "8a4e4183e1df3ca6832219270ac5b2d2",
     "semantic_hash": ""
   },
   "dashboard/static/app.html": {
-    "mtime": 1790341582.3465855,
-    "seen": 1790406257.4345908,
-    "ast_hash": "6f6b1164662e74d3802a4f95c586b99a",
+    "mtime": 1790316466.239188,
+    "seen": 1790317352.0753677,
+    "ast_hash": "1e0ba9fac98ef46ecb10c2ff4a4f0189",
     "semantic_hash": ""
   },
   "dashboard/static/login.html": {
@@ -306,9 +306,9 @@
     "semantic_hash": ""
   },
   "readme.md": {
-    "mtime": 1790354582.6855671,
-    "seen": 1790406257.4345908,
-    "ast_hash": "07024819a6feefdd8bb5261338bcb29d",
+    "mtime": 1790317211.3565428,
+    "seen": 1790317352.0753677,
+    "ast_hash": "d6f05c34ef18212b5a23fb8dbe138c05",
     "semantic_hash": ""
   },
   "requirements.txt": {
@@ -318,10 +318,10 @@
     "semantic_hash": ""
   },
   "actions/daily_brief.py": {
-    "mtime": 1790406092.113901,
-    "seen": 1790406257.4345908,
-    "ast_hash": "a8a4c3fcd9e1b47c4454aa1cdc7c5021",
-    "semantic_hash": ""
+    "mtime": 1790282835.2573318,
+    "seen": 1790354651.676182,
+    "ast_hash": "1227334f4f056c35f60bd2f2c5e5dfd3",
+    "semantic_hash": "1227334f4f056c35f60bd2f2c5e5dfd3"
   },
   "actions/gmail_manager.py": {
     "mtime": 1790282799.9479547,
@@ -388,41 +388,5 @@
     "seen": 1790354651.6827073,
     "ast_hash": "2b3995f5fc03a6b074de13e2037e6901",
     "semantic_hash": "2b3995f5fc03a6b074de13e2037e6901"
-  },
-  "actions/update_daily_briefing.py": {
-    "mtime": 1790406066.2428193,
-    "seen": 1790406257.4345908,
-    "ast_hash": "c00e2d9f63ce9228f90ab2d6a2f4924c",
-    "semantic_hash": ""
-  },
-  "Icons/Trasparent.png": {
-    "mtime": 1790405571.970275,
-    "seen": 1790406257.4345908,
-    "ast_hash": "cb3be40362c8809ea1c0745a062af98d",
-    "semantic_hash": ""
-  },
-  "Icons/baticon_Arlham_Asylum.png": {
-    "mtime": 1790405607.1303585,
-    "seen": 1790406257.4345908,
-    "ast_hash": "f738b1e5e85e744880813e773be4961d",
-    "semantic_hash": ""
-  },
-  "Icons/baticon_Beyond.png": {
-    "mtime": 1790405869.2933178,
-    "seen": 1790406257.4345908,
-    "ast_hash": "45463991e35c8c2771b877b9947d55bb",
-    "semantic_hash": ""
-  },
-  "Icons/baticon_Default.png": {
-    "mtime": 1790405869.327639,
-    "seen": 1790406257.4345908,
-    "ast_hash": "8c04356dc699f470981cdaffb2aa1b67",
-    "semantic_hash": ""
-  },
-  "Icons/baticon_White.png": {
-    "mtime": 1790405607.0956342,
-    "seen": 1790406257.4345908,
-    "ast_hash": "4d782270cf81caca1d8e03c829dedcbb",
-    "semantic_hash": ""
   }
 }
