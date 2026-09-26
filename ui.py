@@ -517,6 +517,7 @@ class C:
     TEXT        = "#e8ecff"       # Crisp luminescent CRT white-blue
     TEXT_DIM    = "#707ab0"       # Muted terminal readout
     TEXT_MED    = "#a6b2f0"       # Medium high-tech CRT readout
+    TEXT_MUTED  = "#707ab0"       # Muted phosphor readout alias
     TEXT_BRIGHT = "#ffffff"       # Pure laser highlight
     WHITE       = "#f4f6ff"       # Clean CRT white
     DARK        = "#05060a"       # Deep shadow floor
@@ -7966,30 +7967,39 @@ class MainWindow(QMainWindow):
     # ── Customization ────────────────────────────────────────────────────────────
 
     def _open_customize(self):
-        cfg = _read_full_config()
-        if self._customize_overlay:
-            self._customize_overlay.hide()
-        cw = self.centralWidget()
-        ov = CustomizeOverlay(
-            cfg.get("assistant_name", "Alfred") or "Alfred",
-            cfg.get("user_name", ""),
-            cfg.get("ui_color", "") or DEFAULT_UI_COLOR,
-            cfg.get("voice_name", ""),
-            current_icon=self._current_icon_path or cfg.get("app_icon", ""),
-            parent=cw,
-        )
-        ow = min(CustomizeOverlay._OW, cw.width() - 20)
-        oh = min(CustomizeOverlay._OH, cw.height() - 20)
-        ov.setGeometry(
-            (cw.width()  - ow) // 2,
-            (cw.height() - oh) // 2,
-            ow, oh,
-        )
-        ov.on_preview = self._preview_ui_color
-        ov.on_icon_change = self.set_app_icon
-        ov.saved.connect(self._apply_name_update)
-        ov.show()
-        self._customize_overlay = ov
+        try:
+            cfg = _read_full_config()
+            if hasattr(self, "_customize_overlay") and self._customize_overlay:
+                self._customize_overlay.hide()
+            cw = self.centralWidget()
+            ov = CustomizeOverlay(
+                cfg.get("assistant_name", "Alfred") or "Alfred",
+                cfg.get("user_name", ""),
+                cfg.get("ui_color", "") or DEFAULT_UI_COLOR,
+                cfg.get("voice_name", ""),
+                current_icon=self._current_icon_path or cfg.get("app_icon", ""),
+                parent=cw,
+            )
+            ow = min(CustomizeOverlay._OW, cw.width() - 20)
+            oh = min(CustomizeOverlay._OH, cw.height() - 20)
+            ov.setGeometry(
+                (cw.width()  - ow) // 2,
+                (cw.height() - oh) // 2,
+                ow, oh,
+            )
+            ov.on_preview = self._preview_ui_color
+            ov.on_icon_change = self.set_app_icon
+            ov.saved.connect(self._apply_name_update)
+            ov.show()
+            ov.raise_()
+            self._customize_overlay = ov
+        except Exception as e:
+            print(f"[UI] ⚠️ Failed to open reconfigure overlay: {e}")
+            if hasattr(self, "_log") and self._log:
+                try:
+                    self._log.append_log(f"ERR: Failed to open reconfigure overlay — {e}")
+                except Exception:
+                    pass
 
     def set_app_icon(self, icon_path_or_name: str, notify: bool = True) -> bool:
         """
@@ -8162,33 +8172,53 @@ class MainWindow(QMainWindow):
             self._log.append_log(f"ERR: Confirmation failed — {e}")
 
     def _open_plugin_manager(self):
-        plugins = self.get_plugins() if self.get_plugins else []
-        cw = self.centralWidget()
-        ov = PluginManagerOverlay(plugins, parent=cw)
-        ov.adjustSize()
-        ov.setGeometry(
-            (cw.width()  - ov.width())  // 2,
-            (cw.height() - ov.height()) // 2,
-            ov.width(), ov.height(),
-        )
-        ov.show()
-        ov.raise_()
-        self._plugin_manager_overlay = ov   # keep a reference so it isn't GC'd
+        try:
+            plugins = self.get_plugins() if self.get_plugins else []
+            cw = self.centralWidget()
+            if hasattr(self, "_plugin_manager_overlay") and self._plugin_manager_overlay:
+                self._plugin_manager_overlay.hide()
+            ov = PluginManagerOverlay(plugins, parent=cw)
+            ov.adjustSize()
+            ov.setGeometry(
+                (cw.width()  - ov.width())  // 2,
+                (cw.height() - ov.height()) // 2,
+                ov.width(), ov.height(),
+            )
+            ov.show()
+            ov.raise_()
+            self._plugin_manager_overlay = ov   # keep a reference so it isn't GC'd
+        except Exception as e:
+            print(f"[UI] ⚠️ Failed to open plugin manager: {e}")
+            if hasattr(self, "_log") and self._log:
+                try:
+                    self._log.append_log(f"ERR: Failed to open plugin manager — {e}")
+                except Exception:
+                    pass
 
     def _open_plugin_settings(self):
-        sections = self.get_plugin_settings() if self.get_plugin_settings else []
-        cw = self.centralWidget()
-        ov = PluginSettingsOverlay(sections, parent=cw)
-        ow = PluginSettingsOverlay._OW
-        oh = min(560, cw.height() - 16)
-        ov.setGeometry(
-            (cw.width()  - ow) // 2,
-            (cw.height() - oh) // 2,
-            ow, oh,
-        )
-        ov.show()
-        ov.raise_()
-        self._plugin_settings_overlay = ov   # keep a reference so it isn't GC'd
+        try:
+            sections = self.get_plugin_settings() if self.get_plugin_settings else []
+            cw = self.centralWidget()
+            if hasattr(self, "_plugin_settings_overlay") and self._plugin_settings_overlay:
+                self._plugin_settings_overlay.hide()
+            ov = PluginSettingsOverlay(sections, parent=cw)
+            ow = PluginSettingsOverlay._OW
+            oh = min(560, cw.height() - 16)
+            ov.setGeometry(
+                (cw.width()  - ow) // 2,
+                (cw.height() - oh) // 2,
+                ow, oh,
+            )
+            ov.show()
+            ov.raise_()
+            self._plugin_settings_overlay = ov   # keep a reference so it isn't GC'd
+        except Exception as e:
+            print(f"[UI] ⚠️ Failed to open module parameters: {e}")
+            if hasattr(self, "_log") and self._log:
+                try:
+                    self._log.append_log(f"ERR: Failed to open module parameters — {e}")
+                except Exception:
+                    pass
 
     # ── Clipboard intelligence ───────────────────────────────────────────────────
 
