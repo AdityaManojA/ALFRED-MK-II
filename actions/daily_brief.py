@@ -51,6 +51,22 @@ def _get_live_weather(city: Optional[str] = None) -> str:
         except Exception:
             pass
 
+    if not target_city:
+        try:
+            from memory.memory_manager import load_memory
+            mem = load_memory()
+            target_city = (
+                mem.get("identity", {}).get("city", {}).get("value")
+                or mem.get("identity", {}).get("location", {}).get("value")
+                or ""
+            )
+            if isinstance(target_city, dict):
+                target_city = target_city.get("value", "")
+            target_city = str(target_city).strip()
+        except Exception:
+            pass
+
+
     url = f"https://wttr.in/{urllib.parse.quote(target_city)}?format=%C+and+%t" if target_city else "https://wttr.in?format=%C+and+%t"
 
     try:
@@ -155,6 +171,35 @@ def daily_brief(
         if sys_text:
             components.append(sys_text)
 
+    # Incorporate user's remembered briefing preferences from long-term memory
+    brief_pref = ""
+    try:
+        from memory.memory_manager import load_memory
+        mem = load_memory()
+        bp = mem.get("preferences", {}).get("briefing_preference")
+        if isinstance(bp, dict):
+            brief_pref = str(bp.get("value", "")).strip()
+        elif isinstance(bp, str):
+            brief_pref = bp.strip()
+        if not city:
+            c = mem.get("identity", {}).get("city")
+            if isinstance(c, dict):
+                city = c.get("value")
+            elif isinstance(c, str):
+                city = c
+    except Exception:
+        pass
+
+    if brief_pref:
+        try:
+            from actions.web_search import _news
+            pref_news = _news(f"{brief_pref} today")
+            if pref_news and not pref_news.startswith(("No news", "Search failed", "Please provide")):
+                first_item = pref_news.strip().split("\n")[0]
+                components.append(f"Regarding your briefing focus on {brief_pref}: {first_item}")
+        except Exception:
+            pass
+
     components.append("All directives stand ready at your command.")
     full_brief = " ".join(components)
 
@@ -170,6 +215,8 @@ def daily_brief(
                 player.write_log(f"   • Schedule: {rem_text}")
             if inc_system:
                 player.write_log(f"   • Vitals: {sys_text}")
+            if brief_pref:
+                player.write_log(f"   • Briefing Focus: {brief_pref}")
         except Exception:
             pass
 
@@ -184,7 +231,8 @@ TOOL = {
         "Synthesizes personal salutation, live weather, unread Gmail summary, "
         "scheduled reminders, and system vitals into a concise spoken report. "
         "Trigger when user says 'good morning', 'morning brief', 'daily brief', "
-        "'what does my day look like', 'give me an update', or 'status report'."
+        "'what does my day look like', 'give me an update', or 'status report'. "
+        "DO NOT call this tool when the user asks to update, change, configure, or customize their daily briefing."
     ),
     "parameters": {
         "type": "OBJECT",

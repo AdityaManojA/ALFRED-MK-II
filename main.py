@@ -1852,18 +1852,25 @@ class JarvisLive:
         """
         memory   = load_memory()
         identity = memory.get("identity", {})
+        prefs    = memory.get("preferences", {})
 
         def _val(k: str) -> str:
             e = identity.get(k, {})
             return (e.get("value", "") if isinstance(e, dict) else str(e)).strip()
 
+        def _pref(k: str) -> str:
+            e = prefs.get(k, {})
+            return (e.get("value", "") if isinstance(e, dict) else str(e)).strip()
+
         lang = _val("language")
         name = _val("name")
+        brief_pref = _pref("briefing_preference")
         time_str = datetime.now().strftime("%H:%M")
 
         # Start fetching news immediately — runs in parallel while phase 1 plays
+        news_query = f"{brief_pref} news today" if brief_pref else "top world news today"
         loop = asyncio.get_event_loop()
-        news_future = loop.run_in_executor(None, _fetch_news_sync, "top world news today")
+        news_future = loop.run_in_executor(None, _fetch_news_sync, news_query)
 
         await asyncio.sleep(0.3)
         if not self.session:
@@ -1946,11 +1953,13 @@ class JarvisLive:
                     ("No news found", "Search failed", "Please provide")
                 )
                 if not failed:
+                    topic_label = f"NEWS — {brief_pref}" if brief_pref else "NEWS — top world news today"
                     # Show on UI content panel immediately
-                    self.ui.show_content("NEWS — top world news today", news_text)
+                    self.ui.show_content(topic_label, news_text)
 
+                    pref_note = f" tailored to your preferences ({brief_pref})" if brief_pref else ""
                     p2 = (
-                        f"[BRIEFING] Here are today's top news headlines:\n{news_text}\n\n"
+                        f"[BRIEFING] Here are today's top headlines{pref_note}:\n{news_text}\n\n"
                         "Pick ONE headline, summarise it in one sentence, then say the full list "
                         f"is displayed on screen. Do not call any tools.{lang_str}"
                     )
